@@ -85,7 +85,7 @@ int main() {
     Glob.Init();
     Par.InitTalStyle();
     Par.InitTables();
-	Par.use_ponder = false;
+	Par.use_ponder = true;
     Mask.Init();
     Dist.Init();
 

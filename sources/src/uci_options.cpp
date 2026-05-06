@@ -29,7 +29,7 @@ void PrintSingleOption(int ind) {
 
 void PrintUciOptions() {
 
-    printf("option name Hash type spin default 16 min 1 max 4096\n");
+    printf("option name Hash type spin default 128 min 1 max 4096\n");
 #ifdef USE_THREADS
     printf("option name Threads type spin default %d min 1 max %d\n", Glob.thread_no, MAX_THREADS);
 #endif

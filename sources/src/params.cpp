@@ -834,91 +834,22 @@ void cParam::InitMaterialTweaks() {
 }
 
 void cParam::InitTalStyle() {
-    
+
     // Start with DefaultWeights (2500-2800 ELO base)
     DefaultWeights();
-    
-    // Now add MINIMAL Tal-style adjustments to preserve ELO
-    // Target: Keep 2500-2800 ELO, add sacrificial style via eval bonus
-    
+
     // Switch off weakening parameters
     nps_limit = 0;
     fl_weakening = false;
     elo = 2800;
     eval_blur = 0;
-    
+
     // Opening book - Tal's games
     book_depth = 256;
     book_filter = 20;
-    
+
     // Timing
     time_percentage = 100;
-    
-    // MINIMAL parameter adjustments for Tal style:
-    
-    // 1. Slightly increase attack weights (was 450/100 default)
-    SetVal(W_OWN_ATT, 350, 0, 500, false);  // Increased from 450 to be less extreme
-    SetVal(W_OPP_ATT, 120, 0, 500, false);  // Increased from 100
-    
-    // 2. Slightly increase mobility for attacking
-    SetVal(W_OWN_MOB, 160, 0, 500, false);  // Was 125 default
-    SetVal(W_OPP_MOB, 110, 0, 500, false);  // Was 100 default
-    
-    // 3. Increase threats and tropism slightly
-    SetVal(W_THREATS, 250, 0, 500, false);  // Was 190
-    SetVal(W_TROPISM, 120, -500, 500, false);  // Was 80
-    
-    // 4. Forward pieces - Tal loved active pieces
-    SetVal(W_FWD, 200, -500, 500, false);  // Was 0
-    SetVal(N_FWD,   5, 0, 50, false);       // Was 1
-    SetVal(B_FWD,   5, 0, 50, false);       // Was 1
-    SetVal(R_FWD,   8, 0, 50, false);       // Was 2
-    SetVal(Q_FWD,  10, 0, 50, false);       // Was 4
-    
-    // 5. King attacks - slightly higher
-    values[N_ATT1] = 10;  // Was 6
-    values[N_ATT2] = 5;   // Was 3
-    values[B_ATT1] = 10;  // Was 6
-    values[B_ATT2] = 4;   // Was 2
-    values[R_ATT1] = 15;  // Was 9
-    values[R_ATT2] = 8;   // Was 4
-    values[Q_ATT1] = 25;  // Was 16
-    values[Q_ATT2] = 10;  // Was 5
-    
-    values[N_CHK] = 8;    // Was 4
-    values[B_CHK] = 10;   // Was 6
-    values[R_CHK] = 18;   // Was 11
-    values[Q_CHK] = 20;   // Was 12
-    
-    // 6. Pawn storms - Tal loved them
-    SetVal(W_STORM, 280, 0, 500, false);  // Was 191
-    
-    // 7. Keep queen - Tal's pride
-    keep_pc[Q] = 25;  // Was 20 default
-    
-    // 8. Reduce draw score - Tal hated draws
-    draw_score = -20;  // Was 0
-    
-    // 9. Material matters slightly less
-    SetVal(W_MATERIAL, 42,  0, 200, false);  // Was 48
-    
-    // The MAIN Tal feature is in eval.cpp: Sacrifice bonus!
-    // When we sacrifice material but have attack, we're HAPPY!
-
-    // Tendency to keep own pieces - Tal style (slightly reluctant to trade)
-    keep_pc[P] = 12;   // Keep pawns (was 8)
-    keep_pc[N] = 15;   // Keep knights (was 10)
-    keep_pc[B] = 15;   // Keep bishops (was 10)
-    keep_pc[R] = 8;    // Slightly keep rooks (was 0)
-    keep_pc[Q] = 25;  // Keep queen (was 20)
-    keep_pc[K] = 0;
-    keep_pc[K + 1] = 0;
-
-    Recalculate();
-
-    // History limit - standard
-    hist_perc = 175;
-    hist_limit = 24576;
 
     // Material adjustments - Bishop pair less important than attack
     SetVal(B_PAIR,  30, -100, 100, false);
@@ -1110,12 +1041,12 @@ void cParam::InitTalStyle() {
     SetVal(K_NO_LUFT, 0, -50, 0, false);    // was -11
     SetVal(K_CASTLE, 10, 0, 50, false);     // was 32
 
-    // Forwardness parameters - MAXIMUM (within defined ranges)
-    SetVal(W_FWD, 500, -500, 500, false);    // MAX
-    SetVal(N_FWD,  50, 0, 50, false);       // MAX (was 1)
-    SetVal(B_FWD,  50, 0, 50, false);       // MAX (was 1)
-    SetVal(R_FWD,  50, 0, 50, false);       // MAX (was 2)
-    SetVal(Q_FWD,  50, 0, 50, false);       // MAX (was 4)
+    // Forwardness parameters - Tal style (reasonable values)
+    SetVal(W_FWD, 200, -500, 500, false);    // Increased for Tal (was 0)
+    SetVal(N_FWD,  30, 0, 50, false);       // Increased (was 1)
+    SetVal(B_FWD,  30, 0, 50, false);       // Increased (was 1)
+    SetVal(R_FWD,  35, 0, 50, false);       // Increased (was 2)
+    SetVal(Q_FWD,  40, 0, 50, false);       // Increased (was 4)
 
     // Mobility - Encouraged
     SetVal(NMG0, -10, -50, 50, false);
