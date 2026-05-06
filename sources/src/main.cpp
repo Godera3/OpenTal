@@ -36,7 +36,7 @@ sInternalBook InternalBook;
 
 void PrintVersion() {
 
-    printf("id name OpenTal 1.1"
+    printf("id name OpenTal 1.1 - Pure Mikhail Tal Edition"
 
 #ifdef DEBUG
 #if !(defined(_WIN64) || defined(__x86_64__))
@@ -83,7 +83,7 @@ int main() {
     cEngine::InitSearch();
     POS::Init();
     Glob.Init();
-    Par.DefaultWeights();
+    Par.InitTalStyle();
     Par.InitTables();
 	Par.use_ponder = false;
     Mask.Init();
@@ -96,7 +96,7 @@ int main() {
 
     PrintOverrides(); // print books and pers paths overrides (26/08/17: linux only)
 
-    MainBook.SetBookName("rodent.bin");
+    MainBook.SetBookName("ph-tal2.bin");
 
     InternalBook.Init();
 

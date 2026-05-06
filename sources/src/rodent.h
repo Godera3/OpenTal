@@ -571,6 +571,7 @@ class cParam {
     NOINLINE void InitTables();
     NOINLINE void DefaultWeights();
     NOINLINE void InitialPersonalityWeights();
+    NOINLINE void InitTalStyle();
     NOINLINE void InitAsymmetric(POS *p);
     NOINLINE void PrintValues();
     void Recalculate();

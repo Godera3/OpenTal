@@ -21,15 +21,15 @@ If not, see <http://www.gnu.org/licenses/>.
 #include <cstring>
 #include <cmath>
 
-const int cEngine::mscSnpDepth = 3;       // max depth at which static null move pruning is applied
-const int cEngine::mscRazorDepth = 4;     // max depth at which razoring is applied
-const int cEngine::mscFutDepth = 6;       // max depth at which futility pruning is applied
+const int cEngine::mscSnpDepth = 1;       // TAL: min depth - less static null move pruning (sacrifice!)
+const int cEngine::mscRazorDepth = 2;     // TAL: min depth - less razoring (allow desperate sacs)
+const int cEngine::mscFutDepth = 3;       // TAL: min depth - less futility pruning (go deeper)
 
 										  // this variable controls when evaluation function needs to be called for the sake of pruning
 const int cEngine::mscSelectiveDepth = Max(Max(mscSnpDepth, mscRazorDepth), mscFutDepth);
 
-const int cEngine::mscRazorMargin[5] = { 0, 300, 360, 420, 480 };
-const int cEngine::mscFutMargin[7] = { 0, 100, 160, 220, 280, 340, 400 };
+const int cEngine::mscRazorMargin[5] = { 0, 600, 720, 840, 960 };  // TAL: higher margins - harder to prune
+const int cEngine::mscFutMargin[7] = { 0, 200, 320, 440, 560, 680, 800 };  // TAL: higher margins
 int cEngine::msLmrSize[2][MAX_PLY][MAX_MOVES];
 
 void cParam::InitAsymmetric(POS *p) {

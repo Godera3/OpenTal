@@ -325,43 +325,42 @@ void cParam::DefaultWeights() {  // tuned automatically
     SetVal(Q_FWD,   4, 0, 50, tuneFwd);
 
     // Mobility
-
     static const bool tuneMobility = false;
 
-    SetVal(NMG0, -32, -50, 50, tuneMobility);
-    SetVal(NMG1, -14, -50, 50, tuneMobility);
-    SetVal(NMG2,  -7, -50, 50, tuneMobility);
-    SetVal(NMG3,  -7, -50, 50, tuneMobility);
-    SetVal(NMG4,   2, -50, 50, tuneMobility);
-    SetVal(NMG5,   7, -50, 50, tuneMobility);
-    SetVal(NMG6,  13, -50, 50, tuneMobility);
-    SetVal(NMG7,  13, -50, 50, tuneMobility);
-    SetVal(NMG8,  25, -50, 50, tuneMobility);
+    SetVal(NMG0, -32, -50, 100, tuneMobility);
+    SetVal(NMG1, -14, -50, 100, tuneMobility);
+    SetVal(NMG2,  -7, -50, 100, tuneMobility);
+    SetVal(NMG3,  -7, -50, 100, tuneMobility);
+    SetVal(NMG4,   2, -50, 100, tuneMobility);
+    SetVal(NMG5,   7, -50, 100, tuneMobility);
+    SetVal(NMG6,  13, -50, 100, tuneMobility);
+    SetVal(NMG7,  13, -50, 100, tuneMobility);
+    SetVal(NMG8,  25, -50, 100, tuneMobility);
 
-    SetVal(NEG0, -41, -50, 50, tuneMobility);
-    SetVal(NEG1, -20, -50, 50, tuneMobility);
-    SetVal(NEG2,  -7, -50, 50, tuneMobility);
-    SetVal(NEG3,   0, -50, 50, tuneMobility);
-    SetVal(NEG4,   3, -50, 50, tuneMobility);
-    SetVal(NEG5,  12, -50, 50, tuneMobility);
-    SetVal(NEG6,   9, -50, 50, tuneMobility);
-    SetVal(NEG7,  11, -50, 50, tuneMobility);
-    SetVal(NEG8,   2, -50, 50, tuneMobility);
+    SetVal(NEG0, -41, -50, 100, tuneMobility);
+    SetVal(NEG1, -20, -50, 100, tuneMobility);
+    SetVal(NEG2,  -7, -50, 100, tuneMobility);
+    SetVal(NEG3,   0, -50, 100, tuneMobility);
+    SetVal(NEG4,   3, -50, 100, tuneMobility);
+    SetVal(NEG5,  12, -50, 100, tuneMobility);
+    SetVal(NEG6,   9, -50, 100, tuneMobility);
+    SetVal(NEG7,  11, -50, 100, tuneMobility);
+    SetVal(NEG8,   2, -50, 100, tuneMobility);
 
-    SetVal(BMG0, -41, -50, 50, tuneMobility);
-    SetVal(BMG1, -24, -50, 50, tuneMobility);
-    SetVal(BMG2, -16, -50, 50, tuneMobility);
-    SetVal(BMG3,  -9, -50, 50, tuneMobility);
-    SetVal(BMG4,  -7, -50, 50, tuneMobility);
-    SetVal(BMG5,   0, -50, 50, tuneMobility);
-    SetVal(BMG6,   4, -50, 50, tuneMobility);
-    SetVal(BMG7,   6, -50, 50, tuneMobility);
-    SetVal(BMG8,   8, -50, 50, tuneMobility);
-    SetVal(BMG9,  10, -50, 50, tuneMobility);
-    SetVal(BMG10, 16, -50, 50, tuneMobility);
-    SetVal(BMG11, 24, -50, 50, tuneMobility);
-    SetVal(BMG12, 17, -50, 50, tuneMobility);
-    SetVal(BMG13, 22, -50, 50, tuneMobility);
+    SetVal(BMG0, -41, -50, 100, tuneMobility);
+    SetVal(BMG1, -24, -50, 100, tuneMobility);
+    SetVal(BMG2, -16, -50, 100, tuneMobility);
+    SetVal(BMG3,  -9, -50, 100, tuneMobility);
+    SetVal(BMG4,  -7, -50, 100, tuneMobility);
+    SetVal(BMG5,   0, -50, 100, tuneMobility);
+    SetVal(BMG6,   4, -50, 100, tuneMobility);
+    SetVal(BMG7,   6, -50, 100, tuneMobility);
+    SetVal(BMG8,   8, -50, 100, tuneMobility);
+    SetVal(BMG9,  10, -50, 100, tuneMobility);
+    SetVal(BMG10, 16, -50, 100, tuneMobility);
+    SetVal(BMG11, 24, -50, 100, tuneMobility);
+    SetVal(BMG12, 17, -50, 100, tuneMobility);
+    SetVal(BMG13, 22, -50, 100, tuneMobility);
 
     SetVal(BEG0, -43, -50, 50, tuneMobility);
     SetVal(BEG1, -40, -50, 50, tuneMobility);
@@ -378,37 +377,37 @@ void cParam::DefaultWeights() {  // tuned automatically
     SetVal(BEG12, 22, -50, 50, tuneMobility);
     SetVal(BEG13, 19, -50, 50, tuneMobility);
 
-    SetVal(RMG0, -14, -50, 50, tuneMobility);
-    SetVal(RMG1, -16, -50, 50, tuneMobility);
-    SetVal(RMG2, -14, -50, 50, tuneMobility);
-    SetVal(RMG3,  -9, -50, 50, tuneMobility);
-    SetVal(RMG4,  -9, -50, 50, tuneMobility);
-    SetVal(RMG5, -10, -50, 50, tuneMobility);
-    SetVal(RMG6,  -5, -50, 50, tuneMobility);
-    SetVal(RMG7,  -2, -50, 50, tuneMobility);
-    SetVal(RMG8,  -3, -50, 50, tuneMobility);
-    SetVal(RMG9,  -2, -50, 50, tuneMobility);
-    SetVal(RMG10,  5, -50, 50, tuneMobility);
-    SetVal(RMG11,  7, -50, 50, tuneMobility);
-    SetVal(RMG12,  9, -50, 50, tuneMobility);
-    SetVal(RMG13, 23, -50, 50, tuneMobility);
-    SetVal(RMG14, 24, -50, 50, tuneMobility);
+    SetVal(RMG0,  -14, -50, 100, tuneMobility);
+    SetVal(RMG1,  -16, -50, 100, tuneMobility);
+    SetVal(RMG2,  -14, -50, 100, tuneMobility);
+    SetVal(RMG3,  -9, -50, 100, tuneMobility);
+    SetVal(RMG4,  -9, -50, 100, tuneMobility);
+    SetVal(RMG5, -10, -50, 100, tuneMobility);
+    SetVal(RMG6,  -5, -50, 100, tuneMobility);
+    SetVal(RMG7,  -2, -50, 100, tuneMobility);
+    SetVal(RMG8,  -3, -50, 100, tuneMobility);
+    SetVal(RMG9,  -2, -50, 100, tuneMobility);
+    SetVal(RMG10,  5, -50, 100, tuneMobility);
+    SetVal(RMG11,  7, -50, 100, tuneMobility);
+    SetVal(RMG12,  9, -50, 100, tuneMobility);
+    SetVal(RMG13, 23, -50, 100, tuneMobility);
+    SetVal(RMG14, 24, -50, 100, tuneMobility);
 
-    SetVal(REG0, -28, -50, 50, tuneMobility);
-    SetVal(REG1, -50, -50, 50, tuneMobility);
-    SetVal(REG2, -38, -50, 50, tuneMobility);
-    SetVal(REG3, -14, -50, 50, tuneMobility);
-    SetVal(REG4,  -9, -50, 50, tuneMobility);
-    SetVal(REG5,   1, -50, 50, tuneMobility);
-    SetVal(REG6,   2, -50, 50, tuneMobility);
-    SetVal(REG7,   8, -50, 50, tuneMobility);
-    SetVal(REG8,   9, -50, 50, tuneMobility);
-    SetVal(REG9,  15, -50, 50, tuneMobility);
-    SetVal(REG10, 18, -50, 50, tuneMobility);
-    SetVal(REG11, 22, -50, 50, tuneMobility);
-    SetVal(REG12, 22, -50, 50, tuneMobility);
-    SetVal(REG13, 24, -50, 50, tuneMobility);
-    SetVal(REG14, 29, -50, 50, tuneMobility);
+    SetVal(REG0, -28, -50, 100, tuneMobility);
+    SetVal(REG1, -50, -50, 100, tuneMobility);
+    SetVal(REG2, -38, -50, 100, tuneMobility);
+    SetVal(REG3, -14, -50, 100, tuneMobility);
+    SetVal(REG4,  -9, -50, 100, tuneMobility);
+    SetVal(REG5,   1, -50, 100, tuneMobility);
+    SetVal(REG6,   2, -50, 100, tuneMobility);
+    SetVal(REG7,   8, -50, 100, tuneMobility);
+    SetVal(REG8,   9, -50, 100, tuneMobility);
+    SetVal(REG9,  15, -50, 100, tuneMobility);
+    SetVal(REG10, 18, -50, 100, tuneMobility);
+    SetVal(REG11, 22, -50, 100, tuneMobility);
+    SetVal(REG12, 22, -50, 100, tuneMobility);
+    SetVal(REG13, 24, -50, 100, tuneMobility);
+    SetVal(REG14, 29, -50, 100, tuneMobility);
 
     draw_score = 0;
     shut_up = false;       // true suppresses displaying info currmove etc.
@@ -834,13 +833,342 @@ void cParam::InitMaterialTweaks() {
     }
 }
 
+void cParam::InitTalStyle() {
+
+    // Pure Mikhail Tal - The Wizard of Riga
+    // "I will gladly sacrifice material for initiative and chaos"
+
+    // Switch off weakening parameters
+    nps_limit = 0;
+    fl_weakening = false;
+    elo = 2800;
+    eval_blur = 0;
+
+    // Opening book - Tal's games
+    book_depth = 256;
+    book_filter = 20;
+
+    // Timing
+    time_percentage = 100;
+
+    // Piece values - Material matters LESS than attack
+    SetVal(P_MID,  100,  50, 150, false);
+    SetVal(N_MID,  325, 200, 400, false);
+    SetVal(B_MID,  340, 200, 400, false);
+    SetVal(R_MID,  500, 400, 600, false);
+    SetVal(Q_MID,  950, 800, 1200, false);
+
+    SetVal(P_END,  101,  50, 150, false);
+    SetVal(N_END,  320, 200, 400, false);
+    SetVal(B_END,  340, 200, 400, false);
+    SetVal(R_END,  505, 400, 600, false);
+    SetVal(Q_END,  960, 800, 1200, false);
+
+    // Tendency to keep own pieces - NEVER trade, especially Queen
+    keep_pc[P] = 50;   // Keep pawns
+    keep_pc[N] = 80;   // Keep knights for tactics
+    keep_pc[B] = 80;   // Keep bishops for tactics
+    keep_pc[R] = 60;   // Keep rooks
+    keep_pc[Q] = 100;  // NEVER trade the Queen - Tal's pride
+    keep_pc[K] = 0;
+    keep_pc[K + 1] = 0;
+
+    // Material adjustments - Bishop pair less important than attack
+    SetVal(B_PAIR,  30, -100, 100, false);
+    SetVal(N_PAIR, -5, -50, 50, false);
+    SetVal(R_PAIR, -5, -50, 50, false);
+    SetVal(ELEPH, 5, -50, 50, false);
+    SetVal(A_EXC, 20, -50, 50, false);
+    SetVal(A_MIN, 30, 0, 100, false);
+    SetVal(A_MAJ, 30, 0, 100, false);
+    SetVal(A_TWO, 20, 0, 100, false);
+    SetVal(A_ALL, 40, 0, 100, false);
+    SetVal(N_CL, 6, -50, 50, false);
+    SetVal(R_OP, 3, -50, 50, false);
+
+    // King attack values - MAXIMUM AGGRESSION
+    // Tal attacks fearlessly, ignoring his own safety
+    values[N_ATT1] = 20;  // was 6
+    values[N_ATT2] = 10;  // was 3
+    values[B_ATT1] = 20;  // was 6
+    values[B_ATT2] = 8;   // was 2
+    values[R_ATT1] = 30;  // was 9
+    values[R_ATT2] = 15;  // was 4
+    values[Q_ATT1] = 50;  // was 16
+    values[Q_ATT2] = 20;  // was 5
+
+    values[N_CHK] = 15;   // was 4
+    values[B_CHK] = 20;   // was 6
+    values[R_CHK] = 35;   // was 11
+    values[Q_CHK] = 40;   // was 12
+
+    values[R_CONTACT] = 50; // was 24
+    values[Q_CONTACT] = 80; // was 36
+
+    // King tropism - Hunt the enemy king relentlessly
+    values[NTR_MG] = 15;  // was 3
+    values[NTR_EG] = 10;  // was 3
+    values[BTR_MG] = 10;  // was 2
+    values[BTR_EG] = 8;   // was 1
+    values[RTR_MG] = 10;  // was 2
+    values[RTR_EG] = 8;   // was 1
+    values[QTR_MG] = 15;  // was 2
+    values[QTR_EG] = 20;  // was 4
+
+    // Varia - Material matters LESS, attack matters MORE
+    SetVal(W_MATERIAL, 20,  0, 200, false);  // was 48 - Material barely matters
+    SetVal(W_PST, 60, 0, 200, false);        // Piece placement less important than attack
+    pst_style = 0;
+    mob_style = 0;
+    draw_score = -50;  // Tal hates draws - he wants to WIN
+    shut_up = false;
+
+    // Attack and mobility - MAXIMUM asymmetry
+    // OWN pieces: maximize attack and mobility
+    // OPPONENT: minimize their mobility, ignore their attacks
+    SetVal(W_OWN_ATT, 500, 0, 500, false);  // MAX - Attack at all costs!
+    SetVal(W_OPP_ATT, 0, 0, 500, false);    // MIN - Ignore opponent threats
+    SetVal(W_OWN_MOB, 500, 0, 500, false);  // MAX - Our mobility
+    SetVal(W_OPP_MOB, 50, 0, 500, false);   // MIN - Restrict opponent
+
+    // Positional weights - Tal's priorities
+    SetVal(W_THREATS, 500, 0, 500, false);   // MAX - Threats everywhere!
+    SetVal(W_TROPISM, 500, -500, 500, false); // MAX - Pieces hunt king
+    SetVal(W_FWD, 500, -500, 500, false);     // MAX - Forwardness!
+    SetVal(W_PASSERS, 50, 0, 500, false);     // MIN - Pawns secondary to attack
+    SetVal(W_MASS, 30, 0, 500, false);        // MIN - Pawn mass unimportant
+    SetVal(W_CHAINS, 20, 0, 500, false);      // MIN - Chains don't matter
+    SetVal(W_OUTPOSTS, 150, 0, 500, false);   // MED - Outposts for attack
+    SetVal(W_LINES, 200, 0, 500, false);       // HIGH - Control lines
+    SetVal(W_STRUCT, 20, 0, 500, false);      // MIN - Pawn structure? What's that?
+    SetVal(W_SHIELD, 0, 0, 500, false);       // NONE - Own king safety ignored
+    SetVal(W_STORM, 500, 0, 500, false);      // MAX - Pawn storms!
+    SetVal(W_CENTER, 200, 0, 500, false);     // HIGH - Control center for attacks
+
+    // Pawn structure parameters - Tal sacrifices pawns freely
+    values[DB_MID] = -5;   // was -12  (doubled pawns less bad)
+    values[DB_END] = -10;  // was -23
+    values[ISO_MG] = -3;   // was -10  (isolated less bad)
+    values[ISO_EG] = -8;   // was -20
+    values[ISO_OF] = -3;   // was -10
+    values[BK_MID] = -3;   // was -8   (backward less bad)
+    values[BK_END] = -3;   // was -8
+    values[BK_OPE] = -3;   // was -10
+    values[P_BIND] = 10;   // was 5    (central binds still good)
+    values[P_BADBIND] = 20; // was 10  (wing triangles less concerning)
+    values[P_ISL] = 3;     // was 7    (islands less concerning)
+    values[P_THR] = 20;    // was 4    (pawn threats more valuable)
+
+    // Pawn chain values - Tal breaks chains, not builds them
+    SetVal(P_BIGCHAIN, 10, 0, 50, false);     // was 38 - chains less relevant
+    SetVal(P_SMALLCHAIN, 8, 0, 50, false);    // was 27
+    SetVal(P_CS1, 30, 0, 50, false);          // was 12 - pawn storms good
+    SetVal(P_CS2, 25, 0, 50, false);          // was 3
+    SetVal(P_CSFAIL, 15, 0, 50, false);       // was 32 - failed storms less bad
+
+    // Passed pawn bonuses - less important than attack
+    SetVal(PMG2,   1, 0, 300, false);
+    SetVal(PMG3,   1, 0, 300, false);
+    SetVal(PMG4,   5, 0, 300, false);
+    SetVal(PMG5,  15, 0, 300, false);
+    SetVal(PMG6,  30, 0, 300, false);
+    SetVal(PMG7,  60, 0, 300, false);
+
+    SetVal(PEG2,   5, 0, 300, false);
+    SetVal(PEG3,  10, 0, 300, false);
+    SetVal(PEG4,  20, 0, 300, false);
+    SetVal(PEG5,  40, 0, 300, false);
+    SetVal(PEG6,  70, 0, 300, false);
+    SetVal(PEG7, 120, 0, 300, false);
+
+    // Passed pawn value percentage modifiers
+    SetVal(P_BL_MUL, 20, 0, 50, false);      // blocked passer less bad
+    SetVal(P_OURSTOP_MUL, 15, 0, 50, false);
+    SetVal(P_OPPSTOP_MUL, 15, 0, 50, false);
+    SetVal(P_DEFMUL, 3, 0, 50, false);
+    SetVal(P_STOPMUL, 3, 0, 50, false);
+
+    // Candidate passer - less important
+    SetVal(CMG2, 1, 0, 300, false);
+    SetVal(CMG3, 1, 0, 300, false);
+    SetVal(CMG4, 3, 0, 300, false);
+    SetVal(CMG5, 10, 0, 300, false);
+    SetVal(CMG6, 20, 0, 300, false);
+    SetVal(CMG7, 40, 0, 300, false);
+
+    SetVal(CEG2, 5, 0, 300, false);
+    SetVal(CEG3, 8, 0, 300, false);
+    SetVal(CEG4, 15, 0, 300, false);
+    SetVal(CEG5, 30, 0, 300, false);
+    SetVal(CEG6, 50, 0, 300, false);
+    SetVal(CEG7, 100, 0, 300, false);
+
+    // King's pawn shield - Tal ignores his own safety
+    SetVal(P_SH_NONE, 0, -50, 50, false);    // was -40
+    SetVal(P_SH_2,   10, -50, 50, false);    // was 2
+    SetVal(P_SH_3,    5, -50, 50, false);    // was -6
+    SetVal(P_SH_4,    0, -50, 50, false);    // was -15
+    SetVal(P_SH_5,    0, -50, 50, false);    // was -23
+    SetVal(P_SH_6,    0, -50, 50, false);    // was -24
+    SetVal(P_SH_7,    0, -50, 50, false);    // was -35
+
+    // Pawn storm - MAXIMUM
+    SetVal(P_ST_OPEN, -30, -50, 50, false);  // was -6
+    SetVal(P_ST_3, -50, -50, 50, false);     // was -16
+    SetVal(P_ST_4, -50, -50, 50, false);     // was -16
+    SetVal(P_ST_5, -20, -50, 50, false);     // was -3
+
+    // Knight parameters - Forward knights!
+    SetVal(N_TRAP, -80, -300, 0, false);    // was -168 (trapped less bad - sacrifice!
+    SetVal(N_BLOCK, -5, -50, 0, false);      // was -17
+    SetVal(N_OWH, 0, -50, 0, false);         // was -1 (can stay in own half if needed)
+    SetVal(N_REACH, 20, 0, 50, false);       // was 11 (reach outposts!)
+    SetVal(BN_SHIELD,  15,  0, 50, false);   // was 5
+
+    // Bishop parameters - Aggressive bishops
+    SetVal(B_FIANCH, 25, 0, 50, false);      // was 13
+    SetVal(B_KING, 30, 0, 50, false);        // was 20
+    SetVal(B_BADF, -10, -50, 0, false);      // was -27
+    SetVal(B_TRAP_A2, -60, -300, 0, false);  // was -138
+    SetVal(B_TRAP_A3, -20, -300, 0, false);  // was -45
+    SetVal(B_BLOCK, -15, -100, 0, false);    // was -45
+    SetVal(B_BF_MG, -5, -50, 0, false);     // was -12
+    SetVal(B_BF_EG, -10, -50, 0, false);    // was -20
+    SetVal(B_WING, 15, 0, 50, false);        // was 3
+    SetVal(B_OWH, 0, -50, 0, false);         // was -7
+    SetVal(B_REACH, 10, 0, 50, false);       // was 2
+    SetVal(B_TOUCH, 15, 0, 50, false);       // was 5
+    SetVal(B_OWN_P, -1, -50, 0, false);
+    SetVal(B_OPP_P, 0, -50, 0, false);
+    SetVal(B_RETURN, 15, 0, 50, false);      // was 7
+
+    // Rook parameters - Active rooks (within max limits)
+    SetVal(RSR_MG, 50, 0, 50, false);       // MAX (was 16)
+    SetVal(RSR_EG, 50, 0, 50, false);       // MAX (was 32)
+    SetVal(RS2_MG, 50, 0, 50, false);       // MAX (was 20)
+    SetVal(RS2_EG, 50, 0, 50, false);       // MAX (was 31)
+    SetVal(ROF_MG, 50, 0, 50, false);       // MAX (was 30)
+    SetVal(ROF_EG, 50, 0, 50, false);       // MAX (was 2)
+    SetVal(RGH_MG, 50, 0, 50, false);       // MAX (was 15)
+    SetVal(RGH_EG, 50, 0, 50, false);       // MAX (was 20)
+    SetVal(RBH_MG, 50, 0, 50, false);       // MAX (was 0)
+    SetVal(RBH_EG, 50, 0, 50, false);       // MAX (was 0)
+    SetVal(ROQ_MG, 50, 0, 50, false);       // MAX (was 9)
+    SetVal(ROQ_EG, 50, 0, 50, false);       // MAX (was 18)
+    SetVal(R_BLOCK_MG, -20, -100, 0, false); // was -50
+    SetVal(R_BLOCK_EG, 0, -100, 0, false);
+
+    // Queen parameters - The Queen is sacred
+    SetVal(QSR_MG, 20, 0, 50, false);       // was 0
+    SetVal(QSR_EG, 30, 0, 50, false);       // was 2
+
+    // King parameters - Castling optional, king safety ignored
+    SetVal(K_NO_LUFT, 0, -50, 0, false);    // was -11
+    SetVal(K_CASTLE, 10, 0, 50, false);     // was 32
+
+    // Forwardness parameters - MAXIMUM (within defined ranges)
+    SetVal(W_FWD, 500, -500, 500, false);    // MAX
+    SetVal(N_FWD,  50, 0, 50, false);       // MAX (was 1)
+    SetVal(B_FWD,  50, 0, 50, false);       // MAX (was 1)
+    SetVal(R_FWD,  50, 0, 50, false);       // MAX (was 2)
+    SetVal(Q_FWD,  50, 0, 50, false);       // MAX (was 4)
+
+    // Mobility - Encouraged
+    SetVal(NMG0, -10, -50, 50, false);
+    SetVal(NMG1,  -5, -50, 50, false);
+    SetVal(NMG2,   0, -50, 50, false);
+    SetVal(NMG3,   5, -50, 50, false);
+    SetVal(NMG4,  10, -50, 50, false);
+    SetVal(NMG5,  15, -50, 50, false);
+    SetVal(NMG6,  25, -50, 50, false);
+    SetVal(NMG7,  30, -50, 50, false);
+    SetVal(NMG8,  40, -50, 50, false);
+
+    SetVal(NEG0, -15, -50, 50, false);
+    SetVal(NEG1,  -5, -50, 50, false);
+    SetVal(NEG2,   0, -50, 50, false);
+    SetVal(NEG3,   5, -50, 50, false);
+    SetVal(NEG4,  10, -50, 50, false);
+    SetVal(NEG5,  15, -50, 50, false);
+    SetVal(NEG6,  20, -50, 50, false);
+    SetVal(NEG7,  25, -50, 50, false);
+    SetVal(NEG8,  30, -50, 50, false);
+
+    SetVal(BMG0, -10, -50, 100, false);
+    SetVal(BMG1,  -5, -50, 100, false);
+    SetVal(BMG2,   0, -50, 100, false);
+    SetVal(BMG3,   5, -50, 100, false);
+    SetVal(BMG4,  10, -50, 100, false);
+    SetVal(BMG5,  15, -50, 100, false);
+    SetVal(BMG6,  20, -50, 100, false);
+    SetVal(BMG7,  25, -50, 100, false);
+    SetVal(BMG8,  30, -50, 100, false);
+    SetVal(BMG9,  35, -50, 100, false);
+    SetVal(BMG10, 40, -50, 100, false);
+    SetVal(BMG11, 45, -50, 100, false);
+    SetVal(BMG12, 50, -50, 100, false);
+    SetVal(BMG13, 55, -50, 100, false);
+
+    SetVal(BEG0, -15, -50, 100, false);
+    SetVal(BEG1, -10, -50, 100, false);
+    SetVal(BEG2,  -5, -50, 100, false);
+    SetVal(BEG3,   0, -50, 100, false);
+    SetVal(BEG4,   5, -50, 100, false);
+    SetVal(BEG5,  10, -50, 100, false);
+    SetVal(BEG6,  15, -50, 100, false);
+    SetVal(BEG7,  20, -50, 100, false);
+    SetVal(BEG8,  25, -50, 100, false);
+    SetVal(BEG9,  30, -50, 100, false);
+    SetVal(BEG10, 35, -50, 100, false);
+    SetVal(BEG11, 40, -50, 100, false);
+    SetVal(BEG12, 45, -50, 100, false);
+    SetVal(BEG13, 50, -50, 100, false);
+
+    SetVal(RMG0,  -5, -50, 100, false);
+    SetVal(RMG1,  -5, -50, 100, false);
+    SetVal(RMG2,   0, -50, 100, false);
+    SetVal(RMG3,   5, -50, 100, false);
+    SetVal(RMG4,   5, -50, 100, false);
+    SetVal(RMG5,  10, -50, 100, false);
+    SetVal(RMG6,  15, -50, 100, false);
+    SetVal(RMG7,  20, -50, 100, false);
+    SetVal(RMG8,  25, -50, 100, false);
+    SetVal(RMG9,  30, -50, 100, false);
+    SetVal(RMG10, 35, -50, 100, false);
+    SetVal(RMG11, 40, -50, 100, false);
+    SetVal(RMG12, 45, -50, 100, false);
+    SetVal(RMG13, 50, -50, 100, false);
+    SetVal(RMG14, 55, -50, 100, false);
+
+    SetVal(REG0, -10, -50, 100, false);
+    SetVal(REG1, -15, -50, 100, false);
+    SetVal(REG2, -10, -50, 100, false);
+    SetVal(REG3,   0, -50, 100, false);
+    SetVal(REG4,   5, -50, 100, false);
+    SetVal(REG5,  10, -50, 100, false);
+    SetVal(REG6,  15, -50, 100, false);
+    SetVal(REG7,  20, -50, 100, false);
+    SetVal(REG8,  25, -50, 100, false);
+    SetVal(REG9,  30, -50, 100, false);
+    SetVal(REG10, 35, -50, 100, false);
+    SetVal(REG11, 40, -50, 100, false);
+    SetVal(REG12, 45, -50, 100, false);
+    SetVal(REG13, 50, -50, 100, false);
+    SetVal(REG14, 55, -50, 100, false);
+
+    Recalculate();
+
+    // History limit - Allow risky moves (lower = more risk)
+    hist_perc = 300;      // was 175 - accept lower history scores
+    hist_limit = 40000;   // was 24576 - allow more "bad" moves
+}
+
 void cParam::InitTables() {
 
-    // Init king attack table
-
+    // Init king attack table - More aggressive curve for Tal
     for (int t = 0, i = 1; i < 511; ++i) {
-        t = (int)Min(1280.0, Min((0.027 * i * i), t + 8.0));
-        danger[i] = (t * 100) / 256; // rescale to centipawns
+        t = (int)Min(1280.0, Min((0.035 * i * i), t + 10.0));  // was 0.027 - faster growth
+        danger[i] = (t * 120) / 256; // rescale - higher bonuses
     }
 }
 

@@ -44,6 +44,7 @@ void PrintUciOptions() {
 
     printf("option name TimeBuffer type spin default %d min 0 max 1000\n", Glob.time_buffer);
 
+    printf("option name TalMode type check default true\n");  // Pure Tal Mode always on
 }
 
 static void valuebool(bool& param, char *val) {
@@ -145,5 +146,15 @@ void ParseSetoption(const char *ptr) {
         Par.hist_perc = atoi(value);
         Par.hist_limit = -MAX_HIST + ((MAX_HIST * Par.hist_perc) / 100);
         Glob.should_clear = true;
+    } else if (strcmp(name, "talmode") == 0)                               {
+        // Pure Mikhail Tal mode - always ON in this edition
+        // This option is here for compatibility with Arena Chess GUI
+        if (strcmp(value, "false") == 0) {
+            Par.DefaultWeights();  // Revert to default if user wants
+            printf("info string Tal Mode OFF - reverted to standard play\n");
+        } else {
+            Par.InitTalStyle();    // Ensure Tal style is active
+            printf("info string Tal Mode ON - Pure Mikhail Tal style!\n");
+        }
     }
 }
