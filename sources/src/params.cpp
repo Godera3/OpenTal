@@ -834,42 +834,90 @@ void cParam::InitMaterialTweaks() {
 }
 
 void cParam::InitTalStyle() {
-
-    // Pure Mikhail Tal - The Wizard of Riga
-    // "I will gladly sacrifice material for initiative and chaos"
-
+    
+    // Start with DefaultWeights (2500-2800 ELO base)
+    DefaultWeights();
+    
+    // Now add MINIMAL Tal-style adjustments to preserve ELO
+    // Target: Keep 2500-2800 ELO, add sacrificial style via eval bonus
+    
     // Switch off weakening parameters
     nps_limit = 0;
     fl_weakening = false;
     elo = 2800;
     eval_blur = 0;
-
+    
     // Opening book - Tal's games
     book_depth = 256;
     book_filter = 20;
-
+    
     // Timing
     time_percentage = 100;
+    
+    // MINIMAL parameter adjustments for Tal style:
+    
+    // 1. Slightly increase attack weights (was 450/100 default)
+    SetVal(W_OWN_ATT, 350, 0, 500, false);  // Increased from 450 to be less extreme
+    SetVal(W_OPP_ATT, 120, 0, 500, false);  // Increased from 100
+    
+    // 2. Slightly increase mobility for attacking
+    SetVal(W_OWN_MOB, 160, 0, 500, false);  // Was 125 default
+    SetVal(W_OPP_MOB, 110, 0, 500, false);  // Was 100 default
+    
+    // 3. Increase threats and tropism slightly
+    SetVal(W_THREATS, 250, 0, 500, false);  // Was 190
+    SetVal(W_TROPISM, 120, -500, 500, false);  // Was 80
+    
+    // 4. Forward pieces - Tal loved active pieces
+    SetVal(W_FWD, 200, -500, 500, false);  // Was 0
+    SetVal(N_FWD,   5, 0, 50, false);       // Was 1
+    SetVal(B_FWD,   5, 0, 50, false);       // Was 1
+    SetVal(R_FWD,   8, 0, 50, false);       // Was 2
+    SetVal(Q_FWD,  10, 0, 50, false);       // Was 4
+    
+    // 5. King attacks - slightly higher
+    values[N_ATT1] = 10;  // Was 6
+    values[N_ATT2] = 5;   // Was 3
+    values[B_ATT1] = 10;  // Was 6
+    values[B_ATT2] = 4;   // Was 2
+    values[R_ATT1] = 15;  // Was 9
+    values[R_ATT2] = 8;   // Was 4
+    values[Q_ATT1] = 25;  // Was 16
+    values[Q_ATT2] = 10;  // Was 5
+    
+    values[N_CHK] = 8;    // Was 4
+    values[B_CHK] = 10;   // Was 6
+    values[R_CHK] = 18;   // Was 11
+    values[Q_CHK] = 20;   // Was 12
+    
+    // 6. Pawn storms - Tal loved them
+    SetVal(W_STORM, 280, 0, 500, false);  // Was 191
+    
+    // 7. Keep queen - Tal's pride
+    keep_pc[Q] = 25;  // Was 20 default
+    
+    // 8. Reduce draw score - Tal hated draws
+    draw_score = -20;  // Was 0
+    
+    // 9. Material matters slightly less
+    SetVal(W_MATERIAL, 42,  0, 200, false);  // Was 48
+    
+    // The MAIN Tal feature is in eval.cpp: Sacrifice bonus!
+    // When we sacrifice material but have attack, we're HAPPY!
+    
+    Recalculate();
+    
+    // History limit - standard
+    hist_perc = 175;
+    hist_limit = 24576;
+}
 
-    // Piece values - Material matters LESS than attack
-    SetVal(P_MID,  100,  50, 150, false);
-    SetVal(N_MID,  325, 200, 400, false);
-    SetVal(B_MID,  340, 200, 400, false);
-    SetVal(R_MID,  500, 400, 600, false);
-    SetVal(Q_MID,  950, 800, 1200, false);
-
-    SetVal(P_END,  101,  50, 150, false);
-    SetVal(N_END,  320, 200, 400, false);
-    SetVal(B_END,  340, 200, 400, false);
-    SetVal(R_END,  505, 400, 600, false);
-    SetVal(Q_END,  960, 800, 1200, false);
-
-    // Tendency to keep own pieces - NEVER trade, especially Queen
-    keep_pc[P] = 50;   // Keep pawns
-    keep_pc[N] = 80;   // Keep knights for tactics
-    keep_pc[B] = 80;   // Keep bishops for tactics
-    keep_pc[R] = 60;   // Keep rooks
-    keep_pc[Q] = 100;  // NEVER trade the Queen - Tal's pride
+    // Tendency to keep own pieces - Tal style (slightly reluctant to trade)
+    keep_pc[P] = 12;   // Keep pawns (was 8)
+    keep_pc[N] = 15;   // Keep knights (was 10)
+    keep_pc[B] = 15;   // Keep bishops (was 10)
+    keep_pc[R] = 8;    // Slightly keep rooks (was 0)
+    keep_pc[Q] = 25;  // Keep queen (was 20)
     keep_pc[K] = 0;
     keep_pc[K + 1] = 0;
 
@@ -886,78 +934,75 @@ void cParam::InitTalStyle() {
     SetVal(N_CL, 6, -50, 50, false);
     SetVal(R_OP, 3, -50, 50, false);
 
-    // King attack values - MAXIMUM AGGRESSION
-    // Tal attacks fearlessly, ignoring his own safety
-    values[N_ATT1] = 20;  // was 6
-    values[N_ATT2] = 10;  // was 3
-    values[B_ATT1] = 20;  // was 6
-    values[B_ATT2] = 8;   // was 2
-    values[R_ATT1] = 30;  // was 9
-    values[R_ATT2] = 15;  // was 4
-    values[Q_ATT1] = 50;  // was 16
-    values[Q_ATT2] = 20;  // was 5
+    // King attack values - High but reasonable for ELO
+    values[N_ATT1] = 12;  // was 6 (increased for Tal style)
+    values[N_ATT2] = 6;   // was 3
+    values[B_ATT1] = 12;  // was 6
+    values[B_ATT2] = 5;   // was 2
+    values[R_ATT1] = 18;  // was 9
+    values[R_ATT2] = 10;  // was 4
+    values[Q_ATT1] = 30;  // was 16
+    values[Q_ATT2] = 12;  // was 5
+    
+    values[N_CHK] = 8;    // was 4
+    values[B_CHK] = 12;   // was 6
+    values[R_CHK] = 20;   // was 11
+    values[Q_CHK] = 25;   // was 12
+    
+    values[R_CONTACT] = 35; // was 24
+    values[Q_CONTACT] = 45; // was 36
 
-    values[N_CHK] = 15;   // was 4
-    values[B_CHK] = 20;   // was 6
-    values[R_CHK] = 35;   // was 11
-    values[Q_CHK] = 40;   // was 12
+    // King tropism - High for Tal style
+    values[NTR_MG] = 8;   // was 3 (increased)
+    values[NTR_EG] = 6;   // was 3
+    values[BTR_MG] = 5;   // was 2
+    values[BTR_EG] = 3;   // was 1
+    values[RTR_MG] = 5;   // was 2
+    values[RTR_EG] = 3;   // was 1
+    values[QTR_MG] = 8;   // was 2
+    values[QTR_EG] = 10;  // was 4
 
-    values[R_CONTACT] = 50; // was 24
-    values[Q_CONTACT] = 80; // was 36
-
-    // King tropism - Hunt the enemy king relentlessly
-    values[NTR_MG] = 15;  // was 3
-    values[NTR_EG] = 10;  // was 3
-    values[BTR_MG] = 10;  // was 2
-    values[BTR_EG] = 8;   // was 1
-    values[RTR_MG] = 10;  // was 2
-    values[RTR_EG] = 8;   // was 1
-    values[QTR_MG] = 15;  // was 2
-    values[QTR_EG] = 20;  // was 4
-
-    // Varia - Material matters LESS, attack matters MORE
-    SetVal(W_MATERIAL, 20,  0, 200, false);  // was 48 - Material barely matters
-    SetVal(W_PST, 60, 0, 200, false);        // Piece placement less important than attack
+    // Varia - Balanced for ELO + Tal style
+    SetVal(W_MATERIAL, 55,  0, 200, false);  // Slightly reduced (was 48) - Tal sacrifices!
+    SetVal(W_PST, 90, 0, 200, false);        // Keep piece placement important
     pst_style = 0;
     mob_style = 0;
-    draw_score = -50;  // Tal hates draws - he wants to WIN
+    draw_score = -15;  // Tal hates draws, but not too extreme
     shut_up = false;
+    
+    // Attack and mobility - Strong attack, reasonable defense
+    SetVal(W_OWN_ATT, 300, 0, 500, false);  // HIGH attack (was 450 default, 500 Tal extreme)
+    SetVal(W_OPP_ATT, 80, 0, 500, false);   // Reduced but not zero (was 100 default)
+    SetVal(W_OWN_MOB, 200, 0, 500, false);  // Good mobility
+    SetVal(W_OPP_MOB, 120, 0, 500, false); // Reasonable opponent mobility
 
-    // Attack and mobility - MAXIMUM asymmetry
-    // OWN pieces: maximize attack and mobility
-    // OPPONENT: minimize their mobility, ignore their attacks
-    SetVal(W_OWN_ATT, 500, 0, 500, false);  // MAX - Attack at all costs!
-    SetVal(W_OPP_ATT, 0, 0, 500, false);    // MIN - Ignore opponent threats
-    SetVal(W_OWN_MOB, 500, 0, 500, false);  // MAX - Our mobility
-    SetVal(W_OPP_MOB, 50, 0, 500, false);   // MIN - Restrict opponent
+    // Positional weights - Tal style balanced for ELO
+    SetVal(W_THREATS, 280, 0, 500, false);   // High threats (was 190 default)
+    SetVal(W_TROPISM, 150, -500, 500, false); // High king tropism
+    SetVal(W_FWD, 100, -500, 500, false);     // Forward pieces (was 0 default)
+    SetVal(W_PASSERS, 110, 0, 500, false);     // Slightly reduced passers (was 127)
+    SetVal(W_MASS, 85, 0, 500, false);        // Reduced pawn mass (was 98)
+    SetVal(W_CHAINS, 80, 0, 500, false);      // Reduced chains
+    SetVal(W_OUTPOSTS, 120, 0, 500, false);   // Good outposts
+    SetVal(W_LINES, 130, 0, 500, false);       // Good line control
+    SetVal(W_STRUCT, 70, 0, 500, false);      // Reduced structure importance
+    SetVal(W_SHIELD, 100, 0, 500, false);     // Reduced but not zero king shield
+    SetVal(W_STORM, 280, 0, 500, false);      // HIGH - Pawn storms!
+    SetVal(W_CENTER, 120, 0, 500, false);     // Good center control
 
-    // Positional weights - Tal's priorities
-    SetVal(W_THREATS, 500, 0, 500, false);   // MAX - Threats everywhere!
-    SetVal(W_TROPISM, 500, -500, 500, false); // MAX - Pieces hunt king
-    SetVal(W_FWD, 500, -500, 500, false);     // MAX - Forwardness!
-    SetVal(W_PASSERS, 50, 0, 500, false);     // MIN - Pawns secondary to attack
-    SetVal(W_MASS, 30, 0, 500, false);        // MIN - Pawn mass unimportant
-    SetVal(W_CHAINS, 20, 0, 500, false);      // MIN - Chains don't matter
-    SetVal(W_OUTPOSTS, 150, 0, 500, false);   // MED - Outposts for attack
-    SetVal(W_LINES, 200, 0, 500, false);       // HIGH - Control lines
-    SetVal(W_STRUCT, 20, 0, 500, false);      // MIN - Pawn structure? What's that?
-    SetVal(W_SHIELD, 0, 0, 500, false);       // NONE - Own king safety ignored
-    SetVal(W_STORM, 500, 0, 500, false);      // MAX - Pawn storms!
-    SetVal(W_CENTER, 200, 0, 500, false);     // HIGH - Control center for attacks
-
-    // Pawn structure parameters - Tal sacrifices pawns freely
-    values[DB_MID] = -5;   // was -12  (doubled pawns less bad)
-    values[DB_END] = -10;  // was -23
-    values[ISO_MG] = -3;   // was -10  (isolated less bad)
-    values[ISO_EG] = -8;   // was -20
-    values[ISO_OF] = -3;   // was -10
-    values[BK_MID] = -3;   // was -8   (backward less bad)
-    values[BK_END] = -3;   // was -8
-    values[BK_OPE] = -3;   // was -10
-    values[P_BIND] = 10;   // was 5    (central binds still good)
-    values[P_BADBIND] = 20; // was 10  (wing triangles less concerning)
-    values[P_ISL] = 3;     // was 7    (islands less concerning)
-    values[P_THR] = 20;    // was 4    (pawn threats more valuable)
+    // Pawn structure parameters - Tal style (slightly relaxed)
+    values[DB_MID] = -10;  // was -12 (slightly relaxed)
+    values[DB_END] = -20;  // was -23
+    values[ISO_MG] = -8;   // was -10 (slightly relaxed)
+    values[ISO_EG] = -16;  // was -20
+    values[ISO_OF] = -8;   // was -10
+    values[BK_MID] = -6;   // was -8 (slightly relaxed)
+    values[BK_END] = -6;   // was -8
+    values[BK_OPE] = -8;   // was -10
+    values[P_BIND] = 8;    // was 5 (central binds still good)
+    values[P_BADBIND] = 15; // was 10
+    values[P_ISL] = 5;     // was 7 (slightly relaxed)
+    values[P_THR] = 12;    // was 4 (pawn threats valuable)
 
     // Pawn chain values - Tal breaks chains, not builds them
     SetVal(P_BIGCHAIN, 10, 0, 50, false);     // was 38 - chains less relevant
