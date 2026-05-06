@@ -709,17 +709,17 @@ int cEngine::Evaluate(POS *p, eData *e) {
 
             // TAL: Sacrificed material but have decent attack? ENTER THE FOREST!
             if (mat_diff < 0 && e->att[sd] > 50) {
-                // Controlled bonus: sacrifice value * attack / 200 (capped at 200 cp)
+                // Enhanced bonus: sacrifice value * attack / 150 (capped at 300 cp)
                 int sac_value = -mat_diff; // how much material we gave up
-                int attack_factor = Min(e->att[sd], 100); // cap attack factor
-                int sac_bonus_mg = Min(200, (sac_value * attack_factor) / 200);
-                int sac_bonus_eg = sac_bonus_mg / 4; // less in endgame
+                int attack_factor = Min(e->att[sd], 120); // cap attack factor
+                int sac_bonus_mg = Min(300, (sac_value * attack_factor) / 150);
+                int sac_bonus_eg = sac_bonus_mg / 2; // more in endgame now!
                 Add(e, sd, sac_bonus_mg, sac_bonus_eg);
             }
 
             // TAL SIGNATURE: Exchange sacrifice when attacking - "The exchange doesn't matter!"
             if (p->mCnt[sd][R] < p->mCnt[op][R] && e->att[sd] > 60) {
-                Add(e, sd, 80, 40); // Moderate bonus for exchange sac
+                Add(e, sd, 100, 50); // Higher bonus for exchange sac
             }
 
             // TAL: Bishop sacrifice on h6/h3 (famous Bxh6+)
@@ -730,9 +730,35 @@ int cEngine::Evaluate(POS *p, eData *e) {
                     int bish_sq = BB.PopFirstBit(&b_sq);
                     if (File(bish_sq) == FILE_H && Rank(bish_sq) >= RANK_5) {
                         if (Dist.metric[bish_sq][opp_king] < 3) {
-                            Add(e, sd, 120, 60); // Bxh6+!! - TAL'S FAMOUS SACRIFICE
+                            Add(e, sd, 150, 75); // Bxh6+!! - Enhanced!
                             break; // only once
                         }
+                    }
+                }
+            }
+
+            // TAL SIGNATURE: Knight sacrifice on f7/f2 (classic attacking square)
+            if (p->mCnt[sd][N] > 0 && e->att[sd] > 50) {
+                U64 n_sq = p->Knights(sd);
+                int opp_king = p->KingSq(op);
+                while (n_sq) {
+                    int knight_sq = BB.PopFirstBit(&n_sq);
+                    if ((SqBb(knight_sq) & BB.KingAttacks(opp_king))) {
+                        Add(e, sd, 120, 60); // Nxf7+!! - Pure Tal!
+                        break;
+                    }
+                }
+            }
+
+            // TAL: Queen invasion on h6/h7/g6 - Pure madness!
+            if (p->mCnt[sd][Q] > 0 && e->att[sd] > 40) {
+                U64 q_sq = p->Queens(sd);
+                int opp_king = p->KingSq(op);
+                while (q_sq) {
+                    int q_pos = BB.PopFirstBit(&q_sq);
+                    if (Dist.metric[q_pos][opp_king] < 2) {
+                        Add(e, sd, 100, 50); // Queen invades!
+                        break;
                     }
                 }
             }
@@ -746,12 +772,41 @@ int cEngine::Evaluate(POS *p, eData *e) {
                 if (Dist.metric[sq][opp_king] < 4) pieces_near_king++;
             }
             if (pieces_near_king >= 3 && e->att[sd] > 40) {
-                Add(e, sd, pieces_near_king * 15, pieces_near_king * 8); // "Welcome to the jungle!"
+                Add(e, sd, pieces_near_king * 20, pieces_near_king * 10); // Enhanced chaos!
+            }
+
+            // TAL: Intimidation - Many pieces en prise but attacking = GOOD
+            int en_prise = 0;
+            for (int tp = N; tp <= Q; tp++) {
+                U64 pieces = p->PcBb(sd, (ePieceType)tp);
+                while (pieces) {
+                    int sq = BB.PopFirstBit(&pieces);
+                    if (p->Swap(sq, sq) < 0) { // We'd lose this piece
+                        if (BB.KingAttacks(p->KingSq(op)) & SqBb(sq)) {
+                            en_prise++; // Piece is en prise AND attacking king zone
+                        }
+                    }
+                }
+            }
+            if (en_prise >= 2 && e->att[sd] > 50) {
+                Add(e, sd, en_prise * 30, en_prise * 15); // "Take whichever you want!"
             }
 
             // TAL: Ignore our own safety when we have attack - "My king can take care of himself!"
             if (e->att[sd] > 70) {
-                Add(e, sd, 30, 15); // Small bonus for reckless play
+                Add(e, sd, 50, 25); // Higher bonus for reckless play
+            }
+
+            // TAL: Trapped piece? We LOVE trapping opponent pieces!
+            if (e->att[sd] > 60) {
+                U64 opp_knights = p->Knights(op);
+                while (opp_knights) {
+                    int sq = BB.PopFirstBit(&opp_knights);
+                    if (BB.PopCnt(BB.KnightAttacks(sq) & p->mClBb[sd]) >= 2) {
+                        Add(e, sd, 80, 40); // Trapping a knight!
+                        break;
+                    }
+                }
             }
         }
     }

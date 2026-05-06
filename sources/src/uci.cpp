@@ -272,11 +272,28 @@ void ParseGo(POS *p, const char *ptr) {
     }
 
     // set move time
-
     if (!strict_time) {
         int base = p->mSide == WC ? wtime : btime;
         int inc  = p->mSide == WC ? winc  : binc;
         cEngine::SetMoveTime(base, inc, movestogo);
+    }
+
+    // TAL: Dynamic time allocation - spend more time in tactical "forest" positions!
+    if (!strict_time) {
+        // Quick eval to detect Tal positions (high attack danger)
+        eData e;
+        e.mg[WC] = e.mg[BC] = 0;
+        e.eg[WC] = e.eg[BC] = 0;
+        e.att[WC] = e.att[BC] = 0;
+        Engines.front().EvaluateKingAttack(p, &e, WC);
+        Engines.front().EvaluateKingAttack(p, &e, BC);
+
+        // If it's a tactical position (high attack), give more time!
+        if ((p->mSide == WC && e.att[WC] > 60) || (p->mSide == BC && e.att[BC] > 60)) {
+            cEngine::msMoveTime = (cEngine::msMoveTime * 2); // DOUBLE the time for Tal positions!
+            if (cEngine::msMoveTime > (p->mSide == WC ? wtime : btime))
+                cEngine::msMoveTime = (p->mSide == WC ? wtime : btime); // don't exceed total time
+        }
     }
 
     // set global variables
@@ -410,7 +427,7 @@ void cEngine::Bench(int depth) {
     for (int i = 0; test[i]; ++i) {
         printf("%s\n", test[i]);
         p->SetPosition(test[i]);
-        Par.InitAsymmetric(p);
+    Par.InitAsymmetric(p);
         Glob.depth_reached = 0;
         Iterate(p, pv);
     }

@@ -87,7 +87,7 @@ void cEngine::InitSearch() { // static init function
 			int r = 0;
 
 			if (dp != 0 && mv != 0) // +-inf to int is undefined
-				r = (int)(log((double)dp) * log((double)Min(mv, 63)) / 2.0);
+				r = (int)(log((double)dp) * log((double)Min(mv, 63)) / 3.0); // TAL: Reduced LMR - search sacrificial lines deeper!
 
 			msLmrSize[0][dp][mv] = r;     // zero window node
 			msLmrSize[1][dp][mv] = r - 1; // principal variation node (checking for pos. values is in `Search()`)
@@ -177,9 +177,7 @@ void cEngine::Iterate(POS *p, int *pv) {
 		cur_val = SearchRoot(p, 0, -INF, INF, mRootDepth, pv);
 		if (Glob.abort_search) break;
 
-		// Shorten search if there is only one root move available
-
-		if (mRootDepth >= 8 && mFlRootChoice == false) break;
+		// TAL: Never stop early - keep searching for tactical shots!
 
 		// Abort search on finding checkmate score
 
@@ -362,15 +360,11 @@ int cEngine::SearchRoot(POS *p, int ply, int alpha, int beta, int depth, int *pv
 			&& mv_hist_score < Par.hist_limit
 			&& MoveType(move) != CASTLE) {
 
-			// read reduction amount from the table
+		// read reduction amount from the table
 
 			reduction = (int)msLmrSize[is_pv][depth][mv_tried];
 
-			// increase reduction on bad history score
-
-			if (mv_hist_score < 0
-				&& new_depth - reduction >= 2)
-				reduction++;
+			// TAL: Don't penalize low history scores - sacrificial moves often have low history!
 
 			// TODO: decrease reduction of moves with good history score
 
@@ -569,14 +563,14 @@ int cEngine::Search(POS *p, int ply, int alpha, int beta, int depth, bool was_nu
 		&& !was_null
 		&& fl_prunable_node
 		&& p->MayNull()
-		&& eval >= beta) {
+		&& eval >= beta + 100) { // TAL: Less aggressive null move - search more sacrificial lines!
 
 		did_null = true;
 
-		// null move depth reduction - modified Stockfish formula
+		// null move depth reduction - modified Stockfish formula (TAL: reduced reduction)
 
-		new_depth = depth - ((823 + 67 * depth) / 256)
-			- Min(3, (eval - beta) / 200);
+		new_depth = depth - ((700 + 67 * depth) / 256)
+			- Min(2, (eval - beta) / 300); // TAL: shallower null move pruning
 
 		// omit null move search if normal search to the same depth wouldn't exceed beta
 		// (sometimes we can check it for free via hash table)
@@ -606,7 +600,7 @@ int cEngine::Search(POS *p, int ply, int alpha, int beta, int depth, bool was_nu
 
 			// verification search
 
-			if (new_depth > 6)
+			if (new_depth > 8) // TAL: More verification - avoid false pruning of tactical lines
 				score = Search(p, ply, alpha, beta, new_depth - 5, true, last_move, last_capt_sq, pv);
 
 			if (Glob.abort_search && mRootDepth > 1) return 0;
@@ -756,19 +750,15 @@ avoid_null:
 			&& mv_hist_score < Par.hist_limit
 			&& MoveType(move) != CASTLE) {
 
-			// read reduction amount from the table
+		// read reduction amount from the table
 
 			reduction = (int)msLmrSize[is_pv][depth][mv_tried];
 
 			if (sherwinFlag
-				&& new_depth - reduction >= 2)
-				reduction++;
+					&& new_depth - reduction >= 2)
+					reduction++;
 
-			// increase reduction on bad history score
-
-			if (mv_hist_score < 0
-				&& new_depth - reduction >= 2)
-				reduction++;
+			// TAL: Don't penalize low history scores!
 
 			// TODO: decrease reduction of moves with good history score
 

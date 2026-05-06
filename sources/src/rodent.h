@@ -769,7 +769,6 @@ class cEngine {
     static void EvaluateKnightPatterns(POS *p, eData *e);
     static void EvaluateCentralPatterns(POS *p, eData *e);
     static void EvaluateKingPatterns(POS *p, eData *e);
-    void EvaluateKingAttack(POS *p, eData *e, eColor sd);
     static int Interpolate(POS *p, eData *e);
     static int GetDrawFactor(POS *p, eColor sd);
     static int CheckmateHelper(POS *p);
@@ -799,6 +798,8 @@ class cEngine {
     static int msStartTime;
 
     static void InitSearch();
+
+    void EvaluateKingAttack(POS *p, eData *e, eColor sd); // TAL: Made public for dynamic time allocation
 
     int mPvEng[MAX_PLY];
     int mDpCompleted;
