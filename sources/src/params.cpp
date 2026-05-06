@@ -904,13 +904,6 @@ void cParam::InitTalStyle() {
     
     // The MAIN Tal feature is in eval.cpp: Sacrifice bonus!
     // When we sacrifice material but have attack, we're HAPPY!
-    
-    Recalculate();
-    
-    // History limit - standard
-    hist_perc = 175;
-    hist_limit = 24576;
-}
 
     // Tendency to keep own pieces - Tal style (slightly reluctant to trade)
     keep_pc[P] = 12;   // Keep pawns (was 8)
@@ -920,6 +913,12 @@ void cParam::InitTalStyle() {
     keep_pc[Q] = 25;  // Keep queen (was 20)
     keep_pc[K] = 0;
     keep_pc[K + 1] = 0;
+
+    Recalculate();
+
+    // History limit - standard
+    hist_perc = 175;
+    hist_limit = 24576;
 
     // Material adjustments - Bishop pair less important than attack
     SetVal(B_PAIR,  30, -100, 100, false);
