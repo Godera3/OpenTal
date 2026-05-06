@@ -690,8 +690,71 @@ int cEngine::Evaluate(POS *p, eData *e) {
      EvaluateKingAttack(p, e, WC);
 	EvaluateKingAttack(p, e, BC);
 
-    // Sacrifice bonus removed - was causing misevaluation (1500+ cp bonuses)
-    // Tal style is now achieved through parameter adjustments in InitTalStyle()
+    // TAL SACRIFICE BONUS - Pure Mikhail Tal style "forest of complications"
+    // When we sacrifice material but have attack, we enter the jungle where humans get lost!
+    {
+        // Use actual piece values from data.cpp
+        extern const int tp_value[7];
+
+        for (eColor sd = WC; sd < 2; ++sd) {
+            eColor op = ~sd;
+
+            // Calculate material difference
+            int our_mat = 0, opp_mat = 0;
+            for (int tp = P; tp <= Q; tp++) {
+                our_mat += p->mCnt[sd][tp] * tp_value[tp];
+                opp_mat += p->mCnt[op][tp] * tp_value[tp];
+            }
+            int mat_diff = our_mat - opp_mat; // negative = we sacrificed
+
+            // TAL: Sacrificed material but have decent attack? ENTER THE FOREST!
+            if (mat_diff < 0 && e->att[sd] > 50) {
+                // Controlled bonus: sacrifice value * attack / 200 (capped at 200 cp)
+                int sac_value = -mat_diff; // how much material we gave up
+                int attack_factor = Min(e->att[sd], 100); // cap attack factor
+                int sac_bonus_mg = Min(200, (sac_value * attack_factor) / 200);
+                int sac_bonus_eg = sac_bonus_mg / 4; // less in endgame
+                Add(e, sd, sac_bonus_mg, sac_bonus_eg);
+            }
+
+            // TAL SIGNATURE: Exchange sacrifice when attacking - "The exchange doesn't matter!"
+            if (p->mCnt[sd][R] < p->mCnt[op][R] && e->att[sd] > 60) {
+                Add(e, sd, 80, 40); // Moderate bonus for exchange sac
+            }
+
+            // TAL: Bishop sacrifice on h6/h3 (famous Bxh6+)
+            if (p->mCnt[sd][B] > 0 && e->att[sd] > 40) {
+                U64 b_sq = p->Bishops(sd);
+                int opp_king = p->KingSq(op);
+                while (b_sq) {
+                    int bish_sq = BB.PopFirstBit(&b_sq);
+                    if (File(bish_sq) == FILE_H && Rank(bish_sq) >= RANK_5) {
+                        if (Dist.metric[bish_sq][opp_king] < 3) {
+                            Add(e, sd, 120, 60); // Bxh6+!! - TAL'S FAMOUS SACRIFICE
+                            break; // only once
+                        }
+                    }
+                }
+            }
+
+            // TAL: Multiple pieces around enemy king = CHAOS!
+            int pieces_near_king = 0;
+            U64 all_our = p->mClBb[sd] & ~p->Pawns(sd);
+            int opp_king = p->KingSq(op);
+            while (all_our) {
+                int sq = BB.PopFirstBit(&all_our);
+                if (Dist.metric[sq][opp_king] < 4) pieces_near_king++;
+            }
+            if (pieces_near_king >= 3 && e->att[sd] > 40) {
+                Add(e, sd, pieces_near_king * 15, pieces_near_king * 8); // "Welcome to the jungle!"
+            }
+
+            // TAL: Ignore our own safety when we have attack - "My king can take care of himself!"
+            if (e->att[sd] > 70) {
+                Add(e, sd, 30, 15); // Small bonus for reckless play
+            }
+        }
+    }
 
     // Add pawn score (which might come from hash)
 

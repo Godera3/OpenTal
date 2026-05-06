@@ -864,23 +864,23 @@ void cParam::InitTalStyle() {
     SetVal(N_CL, 6, -50, 50, false);
     SetVal(R_OP, 3, -50, 50, false);
 
-    // King attack values - High but reasonable for ELO
-    values[N_ATT1] = 12;  // was 6 (increased for Tal style)
-    values[N_ATT2] = 6;   // was 3
-    values[B_ATT1] = 12;  // was 6
-    values[B_ATT2] = 5;   // was 2
-    values[R_ATT1] = 18;  // was 9
-    values[R_ATT2] = 10;  // was 4
-    values[Q_ATT1] = 30;  // was 16
-    values[Q_ATT2] = 12;  // was 5
-    
-    values[N_CHK] = 8;    // was 4
-    values[B_CHK] = 12;   // was 6
-    values[R_CHK] = 20;   // was 11
-    values[Q_CHK] = 25;   // was 12
-    
-    values[R_CONTACT] = 35; // was 24
-    values[Q_CONTACT] = 45; // was 36
+    // King attack values - TAL MADNESS! Maximum aggression
+    values[N_ATT1] = 18;  // VERY HIGH (was 6)
+    values[N_ATT2] = 10;  // VERY HIGH (was 3)
+    values[B_ATT1] = 18;  // VERY HIGH (was 6)
+    values[B_ATT2] = 8;   // VERY HIGH (was 2)
+    values[R_ATT1] = 25;  // VERY HIGH (was 9)
+    values[R_ATT2] = 15;  // VERY HIGH (was 4)
+    values[Q_ATT1] = 40;  // VERY HIGH (was 16)
+    values[Q_ATT2] = 20;  // VERY HIGH (was 5)
+
+    values[N_CHK] = 12;   // VERY HIGH (was 4)
+    values[B_CHK] = 18;   // VERY HIGH (was 6)
+    values[R_CHK] = 30;   // VERY HIGH (was 11)
+    values[Q_CHK] = 40;   // VERY HIGH (was 12)
+
+    values[R_CONTACT] = 50; // VERY HIGH (was 24)
+    values[Q_CONTACT] = 60; // VERY HIGH (was 36)
 
     // King tropism - High for Tal style
     values[NTR_MG] = 8;   // was 3 (increased)
@@ -900,24 +900,24 @@ void cParam::InitTalStyle() {
     draw_score = -15;  // Tal hates draws, but not too extreme
     shut_up = false;
     
-    // Attack and mobility - Strong attack, reasonable defense
-    SetVal(W_OWN_ATT, 300, 0, 500, false);  // HIGH attack (was 450 default, 500 Tal extreme)
-    SetVal(W_OPP_ATT, 80, 0, 500, false);   // Reduced but not zero (was 100 default)
-    SetVal(W_OWN_MOB, 200, 0, 500, false);  // Good mobility
-    SetVal(W_OPP_MOB, 120, 0, 500, false); // Reasonable opponent mobility
-
-    // Positional weights - Tal style balanced for ELO
-    SetVal(W_THREATS, 280, 0, 500, false);   // High threats (was 190 default)
-    SetVal(W_TROPISM, 150, -500, 500, false); // High king tropism
-    SetVal(W_FWD, 100, -500, 500, false);     // Forward pieces (was 0 default)
-    SetVal(W_PASSERS, 110, 0, 500, false);     // Slightly reduced passers (was 127)
-    SetVal(W_MASS, 85, 0, 500, false);        // Reduced pawn mass (was 98)
-    SetVal(W_CHAINS, 80, 0, 500, false);      // Reduced chains
-    SetVal(W_OUTPOSTS, 120, 0, 500, false);   // Good outposts
-    SetVal(W_LINES, 130, 0, 500, false);       // Good line control
-    SetVal(W_STRUCT, 70, 0, 500, false);      // Reduced structure importance
-    SetVal(W_SHIELD, 100, 0, 500, false);     // Reduced but not zero king shield
-    SetVal(W_STORM, 280, 0, 500, false);      // HIGH - Pawn storms!
+    // Attack and mobility - TAL MADNESS! Maximum attack focus
+    SetVal(W_OWN_ATT, 400, 0, 500, false);  // VERY HIGH attack - Tal lives here!
+    SetVal(W_OPP_ATT, 60, 0, 500, false);   // Low opponent attack value - we ignore defense!
+    SetVal(W_OWN_MOB, 250, 0, 500, false);  // High mobility for attacking
+    SetVal(W_OPP_MOB, 100, 0, 500, false); // Don't care about opponent mobility
+    
+    // Positional weights - TAL STYLE MAXED
+    SetVal(W_THREATS, 320, 0, 500, false);   // Very high threats - Tal loved them!
+    SetVal(W_TROPISM, 200, -500, 500, false); // Very high king tropism
+    SetVal(W_FWD, 300, -500, 500, false);     // VERY forward - Tal's active pieces!
+    SetVal(W_PASSERS, 80, 0, 500, false);      // LOW - Tal cares less about passers
+    SetVal(W_MASS, 70, 0, 500, false);        // LOW - Pawn structure less important
+    SetVal(W_CHAINS, 60, 0, 500, false);      // LOW - Chains don't matter
+    SetVal(W_OUTPOSTS, 150, 0, 500, false);   // HIGH - Outposts for attack!
+    SetVal(W_LINES, 160, 0, 500, false);       // HIGH - Line control for attack!
+    SetVal(W_STRUCT, 50, 0, 500, false);      // VERY LOW - Structure doesn't matter
+    SetVal(W_SHIELD, 60, 0, 500, false);      // LOW - King safety ignored!
+    SetVal(W_STORM, 350, 0, 500, false);      // MAX - PAWN STORMS!
     SetVal(W_CENTER, 120, 0, 500, false);     // Good center control
 
     // Pawn structure parameters - Tal style (slightly relaxed)
@@ -1041,12 +1041,12 @@ void cParam::InitTalStyle() {
     SetVal(K_NO_LUFT, 0, -50, 0, false);    // was -11
     SetVal(K_CASTLE, 10, 0, 50, false);     // was 32
 
-    // Forwardness parameters - Tal style (reasonable values)
-    SetVal(W_FWD, 200, -500, 500, false);    // Increased for Tal (was 0)
-    SetVal(N_FWD,  30, 0, 50, false);       // Increased (was 1)
-    SetVal(B_FWD,  30, 0, 50, false);       // Increased (was 1)
-    SetVal(R_FWD,  35, 0, 50, false);       // Increased (was 2)
-    SetVal(Q_FWD,  40, 0, 50, false);       // Increased (was 4)
+    // Forwardness parameters - TAL MADNESS!
+    SetVal(W_FWD, 400, -500, 500, false);    // VERY HIGH - Tal's active pieces!
+    SetVal(N_FWD,  45, 0, 50, false);       // MAX - Knights forward!
+    SetVal(B_FWD,  45, 0, 50, false);       // MAX - Bishops active!
+    SetVal(R_FWD,  48, 0, 50, false);       // MAX - Rooks on aggressive posts!
+    SetVal(Q_FWD,  50, 0, 50, false);       // MAX - Queen leads the attack!
 
     // Mobility - Encouraged
     SetVal(NMG0, -10, -50, 50, false);
