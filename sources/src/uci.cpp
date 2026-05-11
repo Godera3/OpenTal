@@ -288,11 +288,15 @@ void ParseGo(POS *p, const char *ptr) {
         Engines.front().EvaluateKingAttack(p, &e, WC);
         Engines.front().EvaluateKingAttack(p, &e, BC);
 
-        // If it's a tactical position (high attack), give more time!
-        if ((p->mSide == WC && e.att[WC] > 60) || (p->mSide == BC && e.att[BC] > 60)) {
-            cEngine::msMoveTime = (cEngine::msMoveTime * 2); // DOUBLE the time for Tal positions!
-            if (cEngine::msMoveTime > (p->mSide == WC ? wtime : btime))
-                cEngine::msMoveTime = (p->mSide == WC ? wtime : btime); // don't exceed total time
+        // Smoother time multiplier: more attack = more time
+        int our_att = (p->mSide == WC) ? e.att[WC] : e.att[BC];
+        if (our_att > 40) {
+            float multiplier = 1.0f + (our_att - 40) / 80.0f;
+            if (multiplier > 2.5f) multiplier = 2.5f;
+            cEngine::msMoveTime = (int)(cEngine::msMoveTime * multiplier);
+            int total_time = p->mSide == WC ? wtime : btime;
+            if (cEngine::msMoveTime > total_time)
+                cEngine::msMoveTime = total_time;
         }
     }
 

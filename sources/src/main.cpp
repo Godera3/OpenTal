@@ -109,7 +109,7 @@ void cGlobals::Init() {
     use_books_from_pers = true;
     show_pers_file = true;
     thread_no = 1;
-	time_buffer = 0; // TAL: No time buffer - spend ALL the time in the forest!
+	time_buffer = 50; // Small buffer to prevent time losses
 	game_key = 0;
 
     // Clearing  and  setting threads  may  be  necessary

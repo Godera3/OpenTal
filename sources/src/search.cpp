@@ -87,7 +87,7 @@ void cEngine::InitSearch() { // static init function
 			int r = 0;
 
 			if (dp != 0 && mv != 0) // +-inf to int is undefined
-				r = (int)(log((double)dp) * log((double)Min(mv, 63)) / 3.0); // TAL: Reduced LMR - search sacrificial lines deeper!
+				r = (int)(log((double)dp) * log((double)Min(mv, 63)) / 2.0);
 
 			msLmrSize[0][dp][mv] = r;     // zero window node
 			msLmrSize[1][dp][mv] = r - 1; // principal variation node (checking for pos. values is in `Search()`)
@@ -177,7 +177,9 @@ void cEngine::Iterate(POS *p, int *pv) {
 		cur_val = SearchRoot(p, 0, -INF, INF, mRootDepth, pv);
 		if (Glob.abort_search) break;
 
-		// TAL: Never stop early - keep searching for tactical shots!
+		// Shorten search if there is only one root move available
+
+		if (mRootDepth >= 8 && mFlRootChoice == false) break;
 
 		// Abort search on finding checkmate score
 
@@ -232,6 +234,7 @@ int cEngine::SearchRoot(POS *p, int ply, int alpha, int beta, int depth, int *pv
 	int mv_played[MAX_MOVES];
 	int quiet_tried = 0;
 	int mv_hist_score = 0;
+	int best_aggr = 0;
 	MOVES m[1];
 	UNDO u[1];
 	eData e;
@@ -309,6 +312,11 @@ int cEngine::SearchRoot(POS *p, int ply, int alpha, int beta, int depth, int *pv
 
 		if (Glob.MoveToAvoid(move)) { p->UndoMove(move, u); continue; }
 
+		// TAL: Aggression bonus for root move selection
+		int aggr = 0;
+		if (p->InCheck()) aggr = 8;
+		else if (victim != NO_TP) aggr = 4;
+
 		// GATHER INFO ABOUT THE MOVE
 
 		flExtended = false;
@@ -325,9 +333,9 @@ int cEngine::SearchRoot(POS *p, int ply, int alpha, int beta, int depth, int *pv
 
 		// EXTENSIONS
 
-		// 1. check extension, applied in pv nodes or at low depth
+		// 1. check extension
 
-		if (is_pv || depth < 8) { new_depth += p->InCheck(); flExtended = true; };
+		if (is_pv || depth < 12) { new_depth += p->InCheck(); flExtended = true; };
 
 		// 2. pawn to 7th rank extension at the tips of pv-line
 
@@ -364,9 +372,11 @@ int cEngine::SearchRoot(POS *p, int ply, int alpha, int beta, int depth, int *pv
 
 			reduction = (int)msLmrSize[is_pv][depth][mv_tried];
 
-			// TAL: Don't penalize low history scores - sacrificial moves often have low history!
+			// Increase reduction on bad history score
 
-			// TODO: decrease reduction of moves with good history score
+			if (mv_hist_score < 0
+				&& new_depth - reduction >= 2)
+				reduction++;
 
 			new_depth = new_depth - reduction;
 		}
@@ -417,10 +427,11 @@ int cEngine::SearchRoot(POS *p, int ply, int alpha, int beta, int depth, int *pv
 			return score;
 		}
 
-		// NEW BEST MOVE
+		// NEW BEST MOVE (with aggression bias - prefer checks/captures when close)
 
-		if (score > best) {
+		if (score + aggr > best + best_aggr) {
 			best = score;
+			best_aggr = aggr;
 			if (score > alpha) {
 				alpha = score;
 				BuildPv(pv, new_pv, move);
@@ -563,14 +574,14 @@ int cEngine::Search(POS *p, int ply, int alpha, int beta, int depth, bool was_nu
 		&& !was_null
 		&& fl_prunable_node
 		&& p->MayNull()
-		&& eval >= beta + 100) { // TAL: Less aggressive null move - search more sacrificial lines!
+		&& eval >= beta) {
 
 		did_null = true;
 
-		// null move depth reduction - modified Stockfish formula (TAL: reduced reduction)
+		// null move depth reduction - modified Stockfish formula
 
-		new_depth = depth - ((700 + 67 * depth) / 256)
-			- Min(2, (eval - beta) / 300); // TAL: shallower null move pruning
+		new_depth = depth - ((823 + 67 * depth) / 256)
+			- Min(3, (eval - beta) / 200);
 
 		// omit null move search if normal search to the same depth wouldn't exceed beta
 		// (sometimes we can check it for free via hash table)
@@ -600,7 +611,7 @@ int cEngine::Search(POS *p, int ply, int alpha, int beta, int depth, bool was_nu
 
 			// verification search
 
-			if (new_depth > 8) // TAL: More verification - avoid false pruning of tactical lines
+			if (new_depth > 6)
 				score = Search(p, ply, alpha, beta, new_depth - 5, true, last_move, last_capt_sq, pv);
 
 			if (Glob.abort_search && mRootDepth > 1) return 0;
@@ -681,13 +692,13 @@ avoid_null:
 
 		// EXTENSIONS
 
-		// 1. check extension, applied in pv nodes or at low depth
+		// 1. check extension
 
-		if (is_pv || depth < 8) { new_depth += p->InCheck(); flExtended = true; };
+		if (is_pv || depth < 12) { new_depth += p->InCheck(); flExtended = true; };
 
-		// 2. recapture extension in pv-nodes
+		// 2. recapture extension - Tal recaptures to maintain initiative
 
-		if (is_pv && Tsq(move) == last_capt_sq) { new_depth += 1; flExtended = true; };
+		if (Tsq(move) == last_capt_sq) { new_depth += 1; flExtended = true; };
 
 		// 3. pawn to 7th rank extension at the tips of pv-line
 
@@ -758,9 +769,11 @@ avoid_null:
 					&& new_depth - reduction >= 2)
 					reduction++;
 
-			// TAL: Don't penalize low history scores!
+			// Increase reduction on bad history score
 
-			// TODO: decrease reduction of moves with good history score
+			if (mv_hist_score < 0
+				&& new_depth - reduction >= 2)
+				reduction++;
 
 			new_depth = new_depth - reduction;
 		}
