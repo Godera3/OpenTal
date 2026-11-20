@@ -119,7 +119,7 @@
       </div>
       <div class="panel hidden" id="panel">
         <div class="title">OpenTal</div>
-        <div class="sub">Tal-style analysis on this board. Bot games & puzzles only.</div>
+        <div class="sub">Tal-style analysis for both sides. Bot games & puzzles only.</div>
 
         <div class="row">
           <div class="row-head"><span class="label">Search</span><span class="value" id="modeVal"></span></div>
@@ -387,15 +387,7 @@
       syncForm();
       setStatus('Saved. Re-analysing…');
       const state = window.OpenTalBoard && window.OpenTalBoard.current ? window.OpenTalBoard.current() : null;
-      if (lastPlayer !== 'w' && lastPlayer !== 'b') {
-        clear();
-        if ($('badge')) $('badge').textContent = 'TAL — detecting side…';
-      } else if (shouldShowForTurn(lastTurn)) {
-        requestAnalysis(state);
-      } else {
-        clear();
-        if ($('badge')) $('badge').textContent = 'TAL — opponent to move';
-      }
+      requestAnalysis(state);
     } catch (error) {
       if (version !== saveVersion) return;
       setStatus('Could not save settings.');
@@ -535,32 +527,12 @@
     return true;
   }
 
-  function shouldShowForTurn(turn) {
-    // Only show/analyze when we explicitly know the user's side and it's their turn.
-    // If unknown, stay quiet instead of guessing (guessing can show opponent moves).
-    if (lastPlayer !== 'w' && lastPlayer !== 'b') return false;
-    return !turn || turn === lastPlayer;
-  }
-
   function draw(result) {
     ensureHost();
     window.OpenTalDebug = window.OpenTalDebug || {};
     window.OpenTalDebug.lastResult = result;
     lastAnalysis = result || null;
     clear();
-
-    if (lastPlayer !== 'w' && lastPlayer !== 'b') {
-      $('badge').textContent = 'TAL — detecting side…';
-      setStatus(panelOpen ? 'Waiting to detect your side…' : $('status').textContent);
-      place();
-      return;
-    }
-    if (!shouldShowForTurn(lastTurn)) {
-      $('badge').textContent = 'TAL — opponent to move';
-      setStatus(panelOpen ? 'Waiting for your turn…' : $('status').textContent);
-      place();
-      return;
-    }
 
     const best = result && result.bestmove != null ? String(result.bestmove) : '';
     const hasLines = result && Array.isArray(result.lines) && result.lines.length > 0;
@@ -587,7 +559,9 @@
       const opening = openingName(lastMoves, top.move);
       label = opening ? ('book · ' + opening) : 'book';
     }
-    $('badge').textContent = 'TAL ' + top.move + ' · ' + label;
+    const sideName = lastTurn === 'w' ? 'White' : (lastTurn === 'b' ? 'Black' : '');
+    const mine = (lastPlayer === 'w' || lastPlayer === 'b') && lastPlayer === lastTurn ? ' (you)' : '';
+    $('badge').textContent = 'TAL ' + top.move + ' · ' + label + (sideName ? ' · ' + sideName + ' to move' + mine : '');
 
     if (candidates.length > 1) {
       candidates.forEach((line, index) => {
@@ -619,16 +593,29 @@
     });
   }
 
+  let retryTimer = null;
+  function scheduleRetry(delay) {
+    if (retryTimer) clearTimeout(retryTimer);
+    retryTimer = setTimeout(() => {
+      retryTimer = null;
+      const state = window.OpenTalBoard && window.OpenTalBoard.current ? window.OpenTalBoard.current() : null;
+      if (state && state.fen) requestAnalysis(state);
+    }, typeof delay === 'number' ? delay : 1200);
+  }
+
   browser.runtime.onMessage.addListener((msg) => {
     if (msg.type === 'analysis') {
       if (msg.revision != null && msg.revision < revision) return;
       console.log('[OpenTal] analysis', msg);
       draw(msg);
     } else if (msg.type === 'error') {
+      if (msg.revision != null && msg.revision < revision) return;
       console.log('[OpenTal] error', msg);
       ensureHost();
       clear();
       $('badge').textContent = 'TAL — ' + (msg.message || 'error').slice(0, 48);
+      setStatus(panelOpen ? ('Retrying… ' + (msg.message || 'error')) : $('status').textContent);
+      scheduleRetry(1500);
     }
   });
 
@@ -642,6 +629,7 @@
     lastAnalysis = null;
     clear();
     ensureHost();
+    if (retryTimer) { clearTimeout(retryTimer); retryTimer = null; }
     window.OpenTalDebug = window.OpenTalDebug || {};
     window.OpenTalDebug.lastSentFen = state.fen;
     window.OpenTalDebug.lastMoves = lastMoves.slice();
@@ -649,15 +637,7 @@
     window.OpenTalDebug.lastState = state;
     console.log('[OpenTal] state', state.source, 'turn', lastTurn, 'player', lastPlayer, 'flipped', state.flipped, state.fen, 'moves', lastMoves.length);
     place();
-    if (lastPlayer !== 'w' && lastPlayer !== 'b') {
-      $('badge').textContent = 'TAL — detecting side…';
-      setStatus(panelOpen ? 'Waiting to detect your side…' : '');
-    } else if (!shouldShowForTurn(lastTurn)) {
-      $('badge').textContent = 'TAL — opponent to move';
-      setStatus(panelOpen ? 'Waiting for your turn…' : '');
-    } else {
-      requestAnalysis(state);
-    }
+    requestAnalysis(state);
     browser.runtime.sendMessage({
       type: 'gameState',
       fen: state.fen,

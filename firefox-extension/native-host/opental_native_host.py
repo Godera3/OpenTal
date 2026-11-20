@@ -5,6 +5,7 @@ import json
 import os
 import queue
 import re
+import select
 import struct
 import subprocess
 import sys
@@ -13,7 +14,6 @@ import time
 from pathlib import Path
 
 HOST_NAME = "com.opental.analysis"
-EXTENSION_ID = "opental@local"
 ROOT = Path(__file__).resolve().parents[2]
 ENGINE = ROOT / "opental"
 MAX_MOVES = 500
@@ -30,17 +30,24 @@ out_lock = threading.Lock()
 
 
 def send(msg):
-    data = json.dumps(msg, separators=(",", ":")).encode("utf-8")
-    with out_lock:
-        sys.stdout.buffer.write(struct.pack("<I", len(data)) + data)
-        sys.stdout.buffer.flush()
+    try:
+        data = json.dumps(msg, separators=(",", ":")).encode("utf-8")
+        with out_lock:
+            sys.stdout.buffer.write(struct.pack("<I", len(data)) + data)
+            sys.stdout.buffer.flush()
+    except Exception:
+        try:
+            sys.stdout.buffer.close()
+        except Exception:
+            pass
+        os._exit(0)
 
 
 def recv():
     header = sys.stdin.buffer.read(4)
     if not header:
         return None
-    length = struct.unpack("<I", header)[0]
+    (length,) = struct.unpack("<I", header)
     if length > 1024 * 1024:
         raise ValueError("native message too large")
     payload = sys.stdin.buffer.read(length)
@@ -83,6 +90,42 @@ class EngineBridge:
     def __init__(self):
         if not ENGINE.is_file():
             raise RuntimeError("OpenTal binary not found: " + str(ENGINE))
+        self.proc = None
+        self.stdin_lock = threading.Lock()
+        self.generation = 0
+        self.requests = queue.Queue()
+        self.movetime = 250
+        self.depth = 12
+        self.search_mode = "time"
+        self.configured = {}
+        self.name = "unknown"
+        self._start()
+        threading.Thread(target=self._search_loop, daemon=True).start()
+
+    def _alive(self):
+        return self.proc is not None and self.proc.poll() is None
+
+    def _kill(self):
+        p = self.proc
+        self.proc = None
+        if not p:
+            return
+        try:
+            if p.stdin:
+                p.stdin.close()
+        except Exception:
+            pass
+        try:
+            p.kill()
+        except Exception:
+            pass
+        try:
+            p.wait(timeout=1)
+        except Exception:
+            pass
+
+    def _start(self):
+        self._kill()
         self.proc = subprocess.Popen(
             [str(ENGINE)],
             cwd=str(ROOT),
@@ -92,40 +135,75 @@ class EngineBridge:
             text=True,
             bufsize=1,
         )
-        self.stdin_lock = threading.Lock()
-        self.generation = 0
-        self.requests = queue.Queue()
-        self.movetime = 250
-        self.depth = 12
-        self.search_mode = "time"
-        self.configured = {}
         self.name = self._handshake()
-        threading.Thread(target=self._search_loop, daemon=True).start()
+        if self.configured:
+            self._apply_options(self.configured)
+            self._wait_ready(10)
+
+    def _ensure(self):
+        if not self._alive():
+            self._start()
+
+    def _readline(self, timeout):
+        if not self.proc or not self.proc.stdout:
+            return None
+        fd = self.proc.stdout.fileno()
+        end = time.monotonic() + timeout
+        while time.monotonic() < end:
+            if self.proc.poll() is not None:
+                line = self.proc.stdout.readline()
+                return line if line else None
+            remaining = end - time.monotonic()
+            if remaining <= 0:
+                break
+            r, _, _ = select.select([fd], [], [], min(0.2, remaining))
+            if r:
+                line = self.proc.stdout.readline()
+                if line == "":
+                    return None
+                return line
+        return ""
+
+    def _wait_ready(self, timeout):
+        self._uci("isready")
+        end = time.monotonic() + timeout
+        while time.monotonic() < end:
+            line = self._readline(max(0.1, end - time.monotonic()))
+            if line is None:
+                raise RuntimeError("OpenTal exited waiting for readyok")
+            if line == "":
+                continue
+            if line.strip() == "readyok":
+                return
+        raise RuntimeError("Timed out waiting for readyok")
 
     def _uci(self, command):
         with self.stdin_lock:
-            if self.proc.stdin.closed:
-                raise RuntimeError("OpenTal stdin closed")
-            self.proc.stdin.write(command + "\n")
-            self.proc.stdin.flush()
+            if not self._alive() or not self.proc.stdin:
+                raise RuntimeError("OpenTal is not running")
+            try:
+                self.proc.stdin.write(command + "\n")
+                self.proc.stdin.flush()
+            except Exception as exc:
+                raise RuntimeError("OpenTal write failed: " + str(exc))
 
     def _handshake(self):
         self._uci("uci")
         name = None
-        while True:
-            line = self.proc.stdout.readline()
-            if not line:
+        end = time.monotonic() + 10
+        while time.monotonic() < end:
+            line = self._readline(max(0.1, end - time.monotonic()))
+            if line is None:
                 raise RuntimeError("OpenTal exited during UCI handshake")
+            if line == "":
+                continue
             line = line.strip()
             if line.startswith("id name "):
                 name = line[8:]
             if line == "uciok":
-                break
-        self._apply_options({"MultiPV": 1})
-        self._uci("isready")
-        while self.proc.stdout.readline().strip() != "readyok":
-            pass
-        return name or "unknown"
+                self._wait_ready(10)
+                return name or "unknown"
+        raise RuntimeError("Timed out during UCI handshake")
 
     def _apply_options(self, options):
         for name, value in options.items():
@@ -146,15 +224,25 @@ class EngineBridge:
         search_mode = msg.get("searchMode", self.search_mode)
         if search_mode not in ("time", "depth"):
             search_mode = self.search_mode
+
         self.generation += 1
         self.stop()
-        self._apply_options(options)
-        self.movetime = movetime
-        self.depth = depth
-        self.search_mode = search_mode
-        self._uci("isready")
-        while self.proc.stdout.readline().strip() != "readyok":
-            pass
+        self._ensure()
+        try:
+            self._apply_options(options)
+            self.movetime = movetime
+            self.depth = depth
+            self.search_mode = search_mode
+            self._wait_ready(10)
+        except Exception:
+            # recover once
+            self._start()
+            if options:
+                self._apply_options(options)
+            self.movetime = movetime
+            self.depth = depth
+            self.search_mode = search_mode
+            self._wait_ready(10)
         return {
             "type": "configured",
             "options": self.configured,
@@ -166,9 +254,12 @@ class EngineBridge:
 
     def stop(self):
         with self.stdin_lock:
-            if not self.proc.stdin.closed:
-                self.proc.stdin.write("stop\n")
-                self.proc.stdin.flush()
+            if self._alive() and self.proc.stdin:
+                try:
+                    self.proc.stdin.write("stop\n")
+                    self.proc.stdin.flush()
+                except Exception:
+                    pass
 
     def analyse(self, msg):
         fen = clean_token(msg.get("fen", "startpos"), "fen")
@@ -184,37 +275,17 @@ class EngineBridge:
         if search_mode not in ("time", "depth"):
             search_mode = self.search_mode
 
-        position = "position startpos" if fen == "startpos" else "position fen " + fen
-        if moves:
-            position += " moves " + " ".join(moves)
+        if fen == "startpos":
+            position = "position startpos"
+            if moves:
+                position += " moves " + " ".join(moves)
+        else:
+            # Current FEN is authoritative; do not append move history on top of it.
+            position = "position fen " + fen
 
         self.generation += 1
         self.stop()
         self.requests.put((self.generation, msg.get("id"), position, search_mode, movetime, depth))
-
-    def _search_loop(self):
-        while True:
-            gen, msg_id, position, search_mode, movetime, depth = self.requests.get()
-            if gen != self.generation:
-                continue
-            try:
-                self._uci("ucinewgame")
-                self._uci(position)
-                self._uci("isready")
-                while self.proc.stdout.readline().strip() != "readyok":
-                    pass
-                if search_mode == "depth":
-                    self._uci("go depth " + str(depth))
-                    lines = self._collect(gen, "depth", depth)
-                else:
-                    self._uci("go movetime " + str(movetime))
-                    lines = self._collect(gen, "time", movetime)
-                if gen != self.generation:
-                    continue
-                send(self._result(msg_id, lines))
-            except Exception as exc:
-                if gen == self.generation:
-                    send({"type": "error", "id": msg_id, "message": str(exc)})
 
     def _collect(self, gen, mode, value):
         found = {}
@@ -222,11 +293,15 @@ class EngineBridge:
         if mode == "depth":
             deadline = time.monotonic() + 120
         else:
-            deadline = time.monotonic() + value / 1000 + 5
-        while best is None and time.monotonic() < deadline:
-            line = self.proc.stdout.readline()
-            if not line:
+            deadline = time.monotonic() + value / 1000 + 8
+        while time.monotonic() < deadline:
+            if gen != self.generation:
+                return found, None
+            line = self._readline(0.25)
+            if line is None:
                 break
+            if line == "":
+                continue
             line = line.strip()
             if line.startswith("info ") and " score " in line:
                 multipv = MULTIPV_RE.search(line)
@@ -241,27 +316,85 @@ class EngineBridge:
                         "mate": int(score.group(2)) if score.group(1) == "mate" else None,
                     }
             elif line.startswith("bestmove "):
-                best = line.split()[1]
-        if best is None:
-            self.stop()
+                parts = line.split()
+                best = parts[1] if len(parts) > 1 else "(none)"
+                break
         return found, best
+
+    def _run_search(self, gen, msg_id, position, search_mode, movetime, depth):
+        self._ensure()
+        self._uci("ucinewgame")
+        self._uci(position)
+        self._wait_ready(10)
+        if search_mode == "depth":
+            self._uci("go depth " + str(depth))
+            collected = self._collect(gen, "depth", depth)
+        else:
+            self._uci("go movetime " + str(movetime))
+            collected = self._collect(gen, "time", movetime)
+        return collected
+
+    def _search_loop(self):
+        while True:
+            gen, msg_id, position, search_mode, movetime, depth = self.requests.get()
+            if gen != self.generation:
+                continue
+            try:
+                collected = self._run_search(gen, msg_id, position, search_mode, movetime, depth)
+                if gen != self.generation:
+                    continue
+                found, best = collected
+                if best is None and self._alive():
+                    # timed out without bestmove; stop and continue waiting briefly
+                    self.stop()
+                    # give engine a moment to emit bestmove
+                    found2, best2 = self._collect(gen, search_mode, (depth if search_mode == "depth" else movetime))
+                    if best2:
+                        found.update(found2)
+                        best = best2
+                if best is None and not self._alive():
+                    raise RuntimeError("OpenTal engine exited during search")
+                if best is None:
+                    raise RuntimeError("No bestmove received from engine")
+                if gen == self.generation:
+                    send(self._result(msg_id, (found, best)))
+            except Exception as exc:
+                if gen != self.generation:
+                    continue
+                # try to recover engine and retry once for this request
+                try:
+                    self._start()
+                    collected = self._run_search(gen, msg_id, position, search_mode, movetime, depth)
+                    if gen != self.generation:
+                        continue
+                    found, best = collected
+                    if best is None:
+                        raise RuntimeError(str(exc))
+                    send(self._result(msg_id, (found, best)))
+                except Exception as exc2:
+                    if gen == self.generation:
+                        send({"type": "error", "id": msg_id, "message": str(exc2)})
 
     def _result(self, msg_id, collected):
         found, best = collected
         top = found.get(1, {})
+        lines = [found[k] for k in sorted(found) if k <= 3]
         return {
             "type": "analysis",
             "id": msg_id,
             "bestmove": best,
             "score": top.get("score"),
             "mate": top.get("mate"),
-            "depth": top.get("depth"),
-            "lines": [found[k] for k in sorted(found) if k <= 3],
+            "lines": lines,
         }
 
 
 def main():
-    bridge = EngineBridge()
+    try:
+        bridge = EngineBridge()
+    except Exception as exc:
+        send({"type": "error", "message": str(exc)})
+        return
     send({"type": "ready", "engine": bridge.name, "host": HOST_NAME})
     while True:
         try:
@@ -285,8 +418,9 @@ def main():
                 break
             else:
                 send({"type": "error", "id": msg.get("id"), "message": "unknown type"})
-        except (ValueError, TypeError) as exc:
+        except Exception as exc:
             send({"type": "error", "id": msg.get("id"), "message": str(exc)})
+    bridge.stop()
 
 
 if __name__ == "__main__":
