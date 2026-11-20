@@ -276,7 +276,7 @@
       ? bridgeState.flipped
       : domFlipped();
     const turn = bridgeState && bridgeState.turn ? bridgeState.turn : (fen.split(' ')[1] || null);
-    const player = bridgeState && bridgeState.player ? bridgeState.player : (flipped === true ? 'b' : 'w');
+    const player = bridgeState && bridgeState.player ? bridgeState.player : null;
     return { fen, flipped, board, revision, turn, player, moves: moveHistory.slice(), source: fromBridge() ? 'bridge' : (fromSiteApi() ? 'api' : 'dom') };
   }
 
@@ -290,7 +290,7 @@
         ? bridgeState.flipped
         : domFlipped();
       const turn = bridgeState && bridgeState.turn ? bridgeState.turn : (fen.split(' ')[1] || null);
-      const player = bridgeState && bridgeState.player ? bridgeState.player : (flipped === true ? 'b' : 'w');
+      const player = bridgeState && bridgeState.player ? bridgeState.player : null;
       return { fen, flipped, board, revision, turn, player, source: fromBridge() ? 'bridge' : (fromSiteApi() ? 'api' : 'dom') };
     })();
     if (!stateWithoutMoves || stateWithoutMoves.fen === lastFen) return;

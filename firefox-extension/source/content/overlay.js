@@ -12,10 +12,7 @@
     useBook: true,
     talMode: true,
     talRandom: false,
-    ponder: true,
-    autoplay: false,
-    autoplaySide: 'auto',
-    autoplayDelay: 300
+    ponder: true
   };
 
   const MARKUP = `
@@ -122,7 +119,7 @@
       </div>
       <div class="panel hidden" id="panel">
         <div class="title">OpenTal</div>
-        <div class="sub">Tal-style analysis for your side. Bot games & puzzles only. Auto-play uses engine moves.</div>
+        <div class="sub">Tal-style analysis on this board. Bot games & puzzles only.</div>
 
         <div class="row">
           <div class="row-head"><span class="label">Search</span><span class="value" id="modeVal"></span></div>
@@ -157,20 +154,6 @@
           <label class="toggle"><input id="talMode" type="checkbox">Tal mode</label>
           <label class="toggle"><input id="talRandom" type="checkbox">Tal randomness</label>
           <label class="toggle"><input id="ponder" type="checkbox">Ponder</label>
-          <label class="toggle"><input id="autoplay" type="checkbox">Auto-play</label>
-        </div>
-
-        <div class="row" id="autoplaySideRow">
-          <div class="row-head"><span class="label">Play as</span><span class="value" id="autoplaySideVal"></span></div>
-          <div class="mode-switch">
-            <button class="mode-btn" id="sideAuto" type="button">Auto</button>
-            <button class="mode-btn" id="sideWhite" type="button">White</button>
-            <button class="mode-btn" id="sideBlack" type="button">Black</button>
-          </div>
-        </div>
-        <div class="row" id="autoplayDelayRow">
-          <div class="row-head"><span class="label">Move delay</span><span class="value" id="autoplayDelayVal"></span></div>
-          <input id="autoplayDelay" type="range" min="0" max="3000" step="50">
         </div>
 
         <div class="actions">
@@ -313,14 +296,9 @@
   let outsideBound = false;
   let lastMoves = [];
   let lastTurn = null;
-  let lastPlayer = null;
+  let lastPlayer = null; // 'w' or 'b' only when explicitly detected
   let lastFen = null;
   let lastAnalysis = null;
-  let autoplayTimer = null;
-  let autoplayInFlight = false;
-  let lastAutoPlayedKey = null;
-  let playRequestSeq = 0;
-  let autoplayRetries = 0;
 
   function ensureHost() {
     if (host && host.isConnected) return;
@@ -355,27 +333,16 @@
     $('talMode').checked = !!settings.talMode;
     $('talRandom').checked = !!settings.talRandom;
     $('ponder').checked = !!settings.ponder;
-    $('autoplay').checked = !!settings.autoplay;
-    $('autoplayDelay').value = settings.autoplayDelay;
     $('movetimeVal').textContent = settings.movetime + ' ms';
     $('depthVal').textContent = String(settings.depth);
     $('hashVal').textContent = settings.hash + ' MB';
     $('threadsVal').textContent = String(settings.threads);
     $('multiPvVal').textContent = String(settings.multiPv);
-    $('autoplayDelayVal').textContent = settings.autoplayDelay + ' ms';
     $('modeVal').textContent = isDepth ? 'Fixed depth' : 'Time';
     $('modeTime').classList.toggle('active', !isDepth);
     $('modeDepth').classList.toggle('active', isDepth);
     $('movetimeRow').classList.toggle('disabled', isDepth);
     $('depthRow').classList.toggle('disabled', !isDepth);
-    const side = ['white', 'black', 'auto'].includes(settings.autoplaySide) ? settings.autoplaySide : 'auto';
-    $('sideAuto').classList.toggle('active', side === 'auto');
-    $('sideWhite').classList.toggle('active', side === 'white');
-    $('sideBlack').classList.toggle('active', side === 'black');
-    $('autoplaySideVal').textContent = side === 'white' ? 'White' : (side === 'black' ? 'Black' : 'Auto');
-    const autoOn = !!settings.autoplay;
-    $('autoplaySideRow').classList.toggle('disabled', !autoOn);
-    $('autoplayDelayRow').classList.toggle('disabled', !autoOn);
   }
 
   function readForm() {
@@ -389,10 +356,7 @@
       useBook: $('useBook').checked,
       talMode: $('talMode').checked,
       talRandom: $('talRandom').checked,
-      ponder: $('ponder').checked,
-      autoplay: $('autoplay').checked,
-      autoplaySide: ['white', 'black', 'auto'].includes(settings.autoplaySide) ? settings.autoplaySide : 'auto',
-      autoplayDelay: Number($('autoplayDelay').value)
+      ponder: $('ponder').checked
     };
   }
 
@@ -429,11 +393,6 @@
         clear();
         if ($('badge')) $('badge').textContent = 'TAL — opponent to move';
       }
-      if (settings.autoplay && lastAnalysis) {
-        setTimeout(() => { if (lastAnalysis) tryScheduleAutoplay(lastAnalysis); }, 0);
-      } else if (!settings.autoplay) {
-        cancelAutoplay('disabled');
-      }
     } catch (error) {
       if (version !== saveVersion) return;
       setStatus('Could not save settings.');
@@ -455,18 +414,14 @@
       queueAutoSave({ searchMode: 'depth' }, 0);
     });
 
-    ['movetime', 'depth', 'hash', 'threads', 'multiPv', 'autoplayDelay'].forEach((id) => {
+    ['movetime', 'depth', 'hash', 'threads', 'multiPv'].forEach((id) => {
       $(id).addEventListener('input', () => queueAutoSave(null, 400));
       $(id).addEventListener('change', () => queueAutoSave(null, 0));
     });
 
-    ['useBook', 'talMode', 'talRandom', 'ponder', 'autoplay'].forEach((id) => {
+    ['useBook', 'talMode', 'talRandom', 'ponder'].forEach((id) => {
       $(id).addEventListener('change', () => queueAutoSave(null, 0));
     });
-
-    $('sideAuto').addEventListener('click', () => queueAutoSave({ autoplaySide: 'auto' }, 0));
-    $('sideWhite').addEventListener('click', () => queueAutoSave({ autoplaySide: 'white' }, 0));
-    $('sideBlack').addEventListener('click', () => queueAutoSave({ autoplaySide: 'black' }, 0));
 
     $('reset').addEventListener('click', () => {
       settings = Object.assign({}, DEFAULT_SETTINGS);
@@ -577,101 +532,12 @@
     return true;
   }
 
-  function resolvedPlayerSide() {
-    const side = ['white', 'black', 'auto'].includes(settings.autoplaySide) ? settings.autoplaySide : 'auto';
-    if (side === 'white') return 'w';
-    if (side === 'black') return 'b';
-    return (lastPlayer === 'w' || lastPlayer === 'b') ? lastPlayer : null;
-  }
-
   function shouldShowForTurn(turn) {
-    const mine = resolvedPlayerSide();
-    if (!mine) return true; // unknown side -> keep previous behavior
-    return turn === mine;
+    // Show only when we explicitly know the user's side and it's their turn.
+    // If side is unknown, show analysis for the side to move (avoid hiding the user's move).
+    if (lastPlayer !== 'w' && lastPlayer !== 'b') return true;
+    return !turn || turn === lastPlayer;
   }
-
-  function shouldAutoplayForTurn(turn) {
-    if (!settings.autoplay) return false;
-    const side = ['white', 'black', 'auto'].includes(settings.autoplaySide) ? settings.autoplaySide : 'auto';
-    if (side === 'white') return turn === 'w';
-    if (side === 'black') return turn === 'b';
-    return !!lastPlayer && turn === lastPlayer; // auto: only when side is known
-  }
-
-  function cancelAutoplay(reason) {
-    if (autoplayTimer) {
-      clearTimeout(autoplayTimer);
-      autoplayTimer = null;
-    }
-    if (reason) console.log('[OpenTal] autoplay', reason);
-  }
-
-  function tryScheduleAutoplay(result) {
-    if (!result || !settings.autoplay) return;
-    if (autoplayInFlight) return;
-    const resRevision = result.revision != null ? result.revision : revision;
-    if (resRevision !== revision) return;
-    const best = result.bestmove != null ? String(result.bestmove) : '';
-    if (!/^([a-h][1-8])([a-h][1-8])([qrbn])?$/.test(best)) return;
-    if (!lastFen || !shouldAutoplayForTurn(lastTurn)) return;
-    const key = resRevision + '|' + lastFen + '|' + best;
-    if (key === lastAutoPlayedKey) return;
-
-    cancelAutoplay();
-    const delay = Math.max(0, Number(settings.autoplayDelay) || 0);
-    autoplayTimer = setTimeout(() => {
-      autoplayTimer = null;
-      if (!settings.autoplay || autoplayInFlight) return;
-      if (revision !== resRevision || !lastFen || !shouldAutoplayForTurn(lastTurn)) return;
-      const curKey = revision + '|' + lastFen + '|' + best;
-      if (curKey === lastAutoPlayedKey) return;
-      autoplayInFlight = true;
-      lastAutoPlayedKey = curKey;
-      const requestId = ++playRequestSeq;
-      const fenAtSend = lastFen;
-      const revAtSend = revision;
-      setStatus('Auto-playing ' + best + '…');
-      window.postMessage({ source: 'opental-content', type: 'playMove', move: best, requestId, fen: fenAtSend }, '*');
-
-      // If no position change is observed, treat as failure and allow limited retries.
-      setTimeout(() => {
-        if (!autoplayInFlight) return;
-        if (revision === revAtSend && lastFen === fenAtSend) {
-          autoplayInFlight = false;
-          if (lastAutoPlayedKey === curKey) lastAutoPlayedKey = null;
-          autoplayRetries += 1;
-          if (autoplayRetries <= 3) {
-            setStatus('Auto-play: no board change (retry ' + autoplayRetries + '/3)…');
-            if (lastAnalysis) tryScheduleAutoplay(lastAnalysis);
-          } else {
-            setStatus('Auto-play: move not applied. Check side/turn or play manually.');
-            console.log('[OpenTal] autoplay gave up after retries', { fen: fenAtSend, best, rev: revAtSend });
-          }
-        } else {
-          autoplayRetries = 0;
-        }
-      }, 2200);
-    }, delay);
-  }
-
-  window.addEventListener('message', (event) => {
-    if (event.source !== window || !event.data || event.data.source !== 'opental-bridge') return;
-    if (event.data.type === 'movePlayed') {
-      window.OpenTalDebug = window.OpenTalDebug || {};
-      window.OpenTalDebug.lastMovePlayed = event.data;
-      console.log('[OpenTal] movePlayed', event.data);
-      if (!event.data.ok) {
-        autoplayInFlight = false;
-        autoplayRetries += 1;
-        setStatus('Auto-play failed: ' + (event.data.reason || 'unknown') + (autoplayRetries <= 3 ? ' (retrying)…' : ''));
-        lastAutoPlayedKey = null;
-        if (autoplayRetries <= 3 && lastAnalysis) tryScheduleAutoplay(lastAnalysis);
-      } else {
-        setStatus('Auto-play sent (' + (event.data.method || 'move') + ') ' + (event.data.move || '') + '…');
-        // keep in-flight until board position changes or watchdog times out
-      }
-    }
-  });
 
   function draw(result) {
     ensureHost();
@@ -682,7 +548,6 @@
 
     if (!shouldShowForTurn(lastTurn)) {
       $('badge').textContent = 'TAL — opponent to move';
-      cancelAutoplay('not-my-turn');
       setStatus(panelOpen ? 'Waiting for your turn…' : $('status').textContent);
       place();
       return;
@@ -695,7 +560,6 @@
     if (!candidates.length || !/^([a-h][1-8])([a-h][1-8])/.test(candidates[0].move || best)) {
       const shown = best ? best : '(empty)';
       $('badge').textContent = 'TAL — NO MOVE [' + shown + ']';
-      cancelAutoplay('no-move');
       place();
       return;
     }
@@ -728,7 +592,6 @@
 
     setStatus(panelOpen ? 'Ready.' : $('status').textContent);
     place();
-    tryScheduleAutoplay(result);
   }
 
   function requestAnalysis(state) {
@@ -756,7 +619,6 @@
       console.log('[OpenTal] error', msg);
       ensureHost();
       clear();
-      cancelAutoplay('analysis-error');
       $('badge').textContent = 'TAL — ' + (msg.message || 'error').slice(0, 48);
     }
   });
@@ -765,14 +627,10 @@
     revision = state.revision;
     flipped = !!state.flipped;
     lastTurn = state.turn || (state.fen ? state.fen.split(' ')[1] : null);
-    lastPlayer = state.player || ((state.flipped === true) ? 'b' : ((state.flipped === false) ? 'w' : lastPlayer));
+    if (state.player === 'w' || state.player === 'b') lastPlayer = state.player;
     lastFen = state.fen || null;
     lastMoves = Array.isArray(state.moves) ? state.moves.slice() : [];
     lastAnalysis = null;
-    cancelAutoplay('new-position');
-    autoplayInFlight = false;
-    lastAutoPlayedKey = null;
-    autoplayRetries = 0;
     clear();
     ensureHost();
     window.OpenTalDebug = window.OpenTalDebug || {};
@@ -780,7 +638,7 @@
     window.OpenTalDebug.lastMoves = lastMoves.slice();
     window.OpenTalDebug.lastPlayer = lastPlayer;
     window.OpenTalDebug.lastState = state;
-    console.log('[OpenTal] state', state.source, 'turn', state.turn, 'player', lastPlayer, 'flipped', state.flipped, state.fen, 'moves', lastMoves.length);
+    console.log('[OpenTal] state', state.source, 'turn', lastTurn, 'player', lastPlayer, 'flipped', state.flipped, state.fen, 'moves', lastMoves.length);
     place();
     if (!shouldShowForTurn(lastTurn)) {
       $('badge').textContent = 'TAL — opponent to move';

@@ -11,10 +11,7 @@ const DEFAULT_SETTINGS = {
   useBook: true,
   talMode: true,
   talRandom: false,
-  ponder: true,
-  autoplay: false,
-  autoplaySide: 'auto',
-  autoplayDelay: 300
+  ponder: true
 };
 
 const pending = new Map();
@@ -38,8 +35,6 @@ function sanitizeSettings(input) {
   };
   const bool = (value, fallback) => typeof value === 'boolean' ? value : fallback;
   const mode = source.searchMode === 'depth' ? 'depth' : 'time';
-  const rawSide = source.autoplaySide === 'both' ? 'auto' : source.autoplaySide;
-  const side = ['white', 'black', 'auto'].includes(rawSide) ? rawSide : DEFAULT_SETTINGS.autoplaySide;
   return {
     searchMode: mode,
     movetime: clamp(source.movetime, 50, 10000, DEFAULT_SETTINGS.movetime),
@@ -50,10 +45,7 @@ function sanitizeSettings(input) {
     useBook: bool(source.useBook, DEFAULT_SETTINGS.useBook),
     talMode: bool(source.talMode, DEFAULT_SETTINGS.talMode),
     talRandom: bool(source.talRandom, DEFAULT_SETTINGS.talRandom),
-    ponder: bool(source.ponder, DEFAULT_SETTINGS.ponder),
-    autoplay: bool(source.autoplay, DEFAULT_SETTINGS.autoplay),
-    autoplaySide: side,
-    autoplayDelay: clamp(source.autoplayDelay, 0, 5000, DEFAULT_SETTINGS.autoplayDelay)
+    ponder: bool(source.ponder, DEFAULT_SETTINGS.ponder)
   };
 }
 
