@@ -198,3 +198,31 @@ values in this build cut checks against Stockfish from 6.50 to **3.33** (Tal
 Stockfish score from 1.5/6 to 3.0/6. The weak-engine floor still holds (4.5/6
 vs AICE); the only regression is the v1 head-to-head, 6/10 → 4.5/10, which is
 one game in a ten-game sample. Recorded rather than hidden.
+
+## Why the sacs did not turn into attacks
+
+The remaining follow-up gap was not a missing style bonus. Inspecting the
+`sacs` in real games showed most were desperado captures from positions already
+a rook or queen down: `Rxb2` at −210, `Rxg6` at −500, `Nxg6` at −1035,
+`Rxg7+` at −1460. The one sac made from a balanced position, `Qxf1+` at +75,
+produced exactly the Tal pattern: `Ra1++`, `R1a2++`.
+
+The mechanism was in the initiative term: `deficit_factor` reached its 100%
+cap at a 350cp deficit and stayed there no matter how deep the hole, so a lost
+position still received the full 300cp "attack compensation" and could keep
+funding pointless sacs. It now tapers past a 500cp deficit.
+
+Twelve-game samples against Stockfish 10 at depth 5, before → after:
+
+| Metric | Real Tal | Before | After |
+|---|---|---|---|
+| true sacs/game | 1.98 | 2.17 | **1.75** |
+| checks/game | 3.57 | 3.50 | 2.75 |
+| sac -> check within 3 | 52% | 23% | **43%** |
+| sac -> check within 5 | 88% | 54% | **62%** |
+| attacker-liquidation | 15% | 19% | **10%** |
+
+The follow-up and liquidation gaps narrowed and sac frequency moved toward
+Tal's row; check frequency moved away from it. That trade is recorded rather
+than hidden. The weak-engine floor holds (4.5/6 vs AICE); the v1 head-to-head
+went 4.5/10 → 3.5/10 in another small sample.

@@ -51,19 +51,20 @@ Opponent binaries are read from `~/.arena_linux/Engines`; override with
 
 | Metric | Real Tal (100 games) | OpenTal (6 games) |
 |---|---|---|
-| true sacs/game | 1.98 | **2.50** |
-| checks/game | 3.57 | 3.50 |
-| sac -> check within 3 | 52% | 27% |
-| sac -> check within 5 | 88% | 67% |
-| attacker-liquidation | 15% | 20% |
+| true sacs/game | 1.98 | **1.75** |
+| checks/game | 3.57 | 2.75 |
+| sac -> check within 3 | 52% | **43%** |
+| sac -> check within 5 | 88% | **62%** |
+| attacker-liquidation | 15% | **10%** |
 
-OpenTal loses these games — expected against an engine that never panics — but
-the scoreboard is the style columns, not the result. Check frequency now matches
-Tal's row after the doubled check-threat bonuses were returned to base values;
-the old root aggression bias had also been promoting fail-low queen grabs, and
-removing it stopped the no-brainer donations. The remaining gap is what happens
-after the sac — fewer follow-up checks. That is reported rather than tuned away;
-the stop condition for that defect was two bounded attempts.
+OpenTal usually loses these games — expected against an engine that never
+panics — but the scoreboard is the style columns, not the result. Two defects
+were fixed: the root aggression bias that promoted fail-low queen grabs, and
+the doubled check bonuses that made every check look forcing. Initiative
+compensation now tapers once a position is a rook down, which stopped the
+desperado sacs that were inflating the sacrifice count and starving the
+follow-up metric. The remaining gaps — fewer follow-up checks and slightly low
+check frequency — are reported rather than tuned away.
 
 The guardrail: do not tune to change the result column. Tune only when a style
 metric drifts away from Tal's row.
