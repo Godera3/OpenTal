@@ -454,7 +454,14 @@
 
     const top = candidates[0];
     $('badge').textContent = 'TAL ' + top.move + ' · ' + formatScore(top);
-    lastEval = (top.score == null && top.mate == null) ? { book: true } : { score: top.score, mate: top.mate };
+    const hasEval = result && (result.evalScore != null || result.evalMate != null);
+    if (hasEval) {
+      lastEval = { score: result.evalScore, mate: result.evalMate, engine: result.evalEngine || 'Stockfish' };
+    } else if (top.score == null && top.mate == null) {
+      lastEval = { book: true };
+    } else {
+      lastEval = { score: top.score, mate: top.mate };
+    }
     renderEval();
 
     const linesToShow = hasLines ? candidates : (candidates.length > 1 ? candidates : []);
