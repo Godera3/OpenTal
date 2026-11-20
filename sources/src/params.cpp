@@ -879,10 +879,13 @@ void cParam::InitTalStyle() {
     values[Q_ATT1] = 30;  // was 16
     values[Q_ATT2] = 12;  // was 5
 
-    values[N_CHK] = 8;    // was 4
-    values[B_CHK] = 12;   // was 6
-    values[R_CHK] = 22;   // was 11
-    values[Q_CHK] = 25;   // was 12
+    // Doubled check-threat bonuses made every check look forcing: 6.5/g vs
+    // Stockfish against Tal's 3.57, with 160-ply king hunts that never landed.
+    // Base values keep checks as threats instead of the whole plan.
+    values[N_CHK] = 4;
+    values[B_CHK] = 6;
+    values[R_CHK] = 11;
+    values[Q_CHK] = 12;
 
     values[R_CONTACT] = 35; // was 24
     values[Q_CONTACT] = 50; // was 36

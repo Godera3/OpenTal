@@ -51,19 +51,19 @@ Opponent binaries are read from `~/.arena_linux/Engines`; override with
 
 | Metric | Real Tal (100 games) | OpenTal (6 games) |
 |---|---|---|
-| true sacs/game | 1.98 | **2.33** |
-| checks/game | 3.57 | 3.67 |
-| sac -> check within 3 | 52% | 29% |
-| sac -> check within 5 | 88% | 64% |
-| attacker-liquidation | 15% | 29% |
+| true sacs/game | 1.98 | **2.50** |
+| checks/game | 3.57 | 3.50 |
+| sac -> check within 3 | 52% | 27% |
+| sac -> check within 5 | 88% | 67% |
+| attacker-liquidation | 15% | 20% |
 
 OpenTal loses these games — expected against an engine that never panics — but
-the scoreboard is the style columns, not the result. Sacrifice frequency is now
-close to Tal's row and check frequency matches it: the old root aggression bias
-was promoting fail-low queen grabs, and removing it stopped the no-brainer
-donations. The remaining gap is what happens after the sac — fewer follow-up
-checks and more liquidation of the attacking pieces. That is reported rather
-than tuned away; the stop condition for this defect was two bounded attempts.
+the scoreboard is the style columns, not the result. Check frequency now matches
+Tal's row after the doubled check-threat bonuses were returned to base values;
+the old root aggression bias had also been promoting fail-low queen grabs, and
+removing it stopped the no-brainer donations. The remaining gap is what happens
+after the sac — fewer follow-up checks. That is reported rather than tuned away;
+the stop condition for that defect was two bounded attempts.
 
 The guardrail: do not tune to change the result column. Tune only when a style
 metric drifts away from Tal's row.
@@ -85,3 +85,19 @@ Current result: OpenTal matches 16/41 plies. It finds the small sacrifices
 at 300 cp. Stockfish scores the post-sac position around -7100 cp: the sac was
 objectively lost and worked only because the human resigned. That is the
 style-vs-soundness tradeoff this probe exists to make visible.
+
+## Comparing the two engines
+
+`TalComparisonRunner.py` scores **both** sides from the same Tal positions,
+which is what answers "which one is more Tal":
+
+    PYTHONPATH=/tmp/opencode/chesslib python3 testing/TalComparisonRunner.py \
+        --opponent v1 --games 5 --depth 6
+
+`--opponent` accepts any engine from the match runner; `--old-as-a` puts v1 in
+v2's seat so both engines can be measured against the same stable opponent.
+Results at depth 6: v2 beats v1 6/10 and AICE 6/6; against Stockfish v2 scores
+1.5/6 with 6.50 checks/g against Tal's 3.57. The doubled check-threat bonuses
+were the cause, and returning them to base values brought checks to 3.33/g and
+raised the Stockfish score to 3/6. See `VERSION_HISTORY.md` for the full table
+and the honest regressions.

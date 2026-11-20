@@ -171,3 +171,30 @@ specific hanging-queen blunder is gone. The remaining gap is follow-up: sacs
 still turn into checks less often than Tal's, and attacking pieces liquidate
 more often. That is reported, not tuned away — the sample is six games and the
 stop condition was two bounded attempts. Result column is context only.
+
+## v1 vs v2: which one is the better Tal
+
+`testing/TalComparisonRunner.py` plays the two binaries from the same Tal
+positions and scores **both** sides with the same yardstick (the old harness
+only scored v2). At depth 6:
+
+| Match | v1 score | v2 score | v1 sacs / checks | v2 sacs / checks |
+|---|---|---|---|---|
+| v2 vs v1, 10 games | 4.0 | **6.0** | 2.30 / 5.80 | 2.00 / 8.60 |
+| vs Stockfish 10, 6 games | 2.0 | 1.5 | 1.67 / 2.67 | 2.33 / 6.50 |
+| vs AICE 0.99.2, 6 games | — | **6.0** | — | 1.83 / 5.17 |
+
+Neither version is cleanly "more Tal": v1 is closer on check frequency and
+sac-to-check ratio, v2 on sacrifice frequency and raw strength. v2 beats v1
+head-to-head and crushes a weak engine, so the "random human" concern is not
+real — the problem was that v2 checked far more than Tal (6.50/g vs 3.57) and
+one 160-ply game produced 33 checks without converting.
+
+Root cause was the doubled check-threat bonuses in `InitTalStyle()`:
+`N_CHK` 4→8, `B_CHK` 6→12, `R_CHK` 11→22, `Q_CHK` 12→25, all feeding the king
+attack score that drives both eval and check extensions. Returning them to base
+values in this build cut checks against Stockfish from 6.50 to **3.33** (Tal
+3.57), cut attacker-liquidation from 36% to 7% (Tal 15%), and raised the
+Stockfish score from 1.5/6 to 3.0/6. The weak-engine floor still holds (4.5/6
+vs AICE); the only regression is the v1 head-to-head, 6/10 → 4.5/10, which is
+one game in a ten-game sample. Recorded rather than hidden.
