@@ -163,6 +163,7 @@ void cParam::DefaultWeights() {  // tuned automatically
     SetVal(W_CENTER,   50, 0, 500, tuneWeights);
     SetVal(W_INITIATIVE, 0, 0, 500, tuneWeights);
     SetVal(W_FOREST,     0, 0, 500, tuneWeights);
+    SetVal(W_HUNT,       0, 0, 500, tuneWeights);
 
     // Pawn structure parameters
 
@@ -542,6 +543,7 @@ void cParam::InitialPersonalityWeights() { // tuned manually for good experience
     values[W_CENTER] = 50;
     values[W_INITIATIVE] = 0;
     values[W_FOREST] = 0;
+    values[W_HUNT] = 0;
 
     // Pawn structure parameters
 
@@ -931,6 +933,7 @@ void cParam::InitTalStyle() {
     // 300 cp cannot refund a queen (worth ~500); an attack must cost something.
     SetVal(W_INITIATIVE, 300, 0, 500, false);
     SetVal(W_FOREST, 140, 0, 500, false);
+    SetVal(W_HUNT, 100, 0, 500, false);
 
     // Pawn structure parameters - Tal style (slightly relaxed)
     values[DB_MID] = -10;  // was -12 (slightly relaxed)

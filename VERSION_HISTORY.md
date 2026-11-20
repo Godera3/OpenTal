@@ -333,3 +333,49 @@ checking lines without teaching the eval what a sac *buys* (opened file,
 removed defender, exposed king). The next attempt has to value those
 consequences after the exchange settles; a search extension is the wrong
 instrument.
+
+## Hunt compensation: the eval values what survives (2026-11-20)
+
+`W_HUNT` (100) pays for the attack left after a material sacrifice: at least
+two of our non-pawns within distance 3 of the enemy king, at most one enemy
+non-pawn within distance 2 of it, and a broken pawn shield. The score is capped
+and multiplied by the same `deficit_factor` as initiative, so a large material
+deficit cannot fund a desperado. Unlike initiative it does not require a queen
+and does not require three attackers — that gate was what turned the
+initiative term off in exactly the positions Tal sacrifices from.
+
+Sixteen depth-5 games against Stockfish, same Tal positions:
+
+| Metric | Tal, ply 16 | Baseline `c044716` | With `W_HUNT` |
+|---|---|---|---|
+| true sacs/game | 1.91 | 1.31 | **2.06** |
+| checks/game | 3.53 | 3.75 | **3.88** |
+| captures/game | 8.30 | 6.12 | 6.19 |
+| pawn storms/game | 1.84 | 1.81 | 1.31 |
+| forward pieces/own move | 0.82 | 1.19 | **1.06** |
+| sac → check within 3 | 53% | 67% | **64%** |
+| sac → check within 5 | 92% | 90% | **97%** |
+| attacker-liquidation | 15% | 19% | **9%** |
+
+Sacs, checks, follow-up, forward pieces and liquidation all move toward Tal.
+Storms fall and captures stay low; captures remain opponent-dependent (10.1/g
+against v1). Specimen agreement is unchanged at 17/41. The weak-engine floor
+holds: 7.0/10 against v1 (was 6.5) and 3.5/6, 4.0/6, 5.0/6 against AICE over
+three runs — the same noisy range as before.
+
+Depth 7 still shows the known limit: 2.33 sacs, 5.58 checks, 8.58 captures,
+1.33 storms, 1.46 forward pieces, follow-up 29%/39%. Checks are far above
+Tal's row and follow-up is still weak, but both are much better than the old
+depth-7 build (1.75 checks, 26% follow-up).
+
+Rejected settings on the same twelve-game sample: cap 150 with two defenders
+allowed gave 1.83 sacs but 6.33 checks and 50% follow-up; cap 60 gave 2.92
+sacs; cap 150 with three attackers gave 1.56 forward pieces; cap 60 with one
+defender gave 1.67 checks and 0.67 storms. The narrow gate (two attackers,
+one defender, cap 100) was the only setting that improved both sac count and
+follow-up without check spam.
+
+One build note: `rodent.h` holds a parallel `paramNames` table, so adding an
+enum without its name entry — or rebuilding only the touched `.cpp` files —
+leaves mixed enum layouts and makes the search hang for 60 s. The parameter
+and its name were added together and the tree was rebuilt with `make clean`.

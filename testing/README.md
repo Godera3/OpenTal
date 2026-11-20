@@ -53,25 +53,25 @@ Tal's row is now measured from **the same ply** as the engine games; full-game
 numbers (1.98 sacs, 3.57 checks, 9.14 captures, 2.15 storms) include phases the
 probe never sees and should not be used as the target.
 
-| Metric | Tal from ply 16 | OpenTal (12 games) |
+| Metric | Tal from ply 16 | OpenTal (16 games) |
 |---|---|---|
-| true sacs/game | 1.91 | 1.42 |
-| checks/game | 3.53 | **4.00** |
-| captures/game | 8.30 | 6.17 |
-| pawn storms/game | 1.84 | **1.92** |
-| forward pieces/own move | 0.82 | 1.28 |
-| sac -> check within 3 | 53% | **59%** |
-| sac -> check within 5 | 92% | **88%** |
-| attacker-liquidation | 15% | 24% |
+| true sacs/game | 1.91 | **2.06** |
+| checks/game | 3.53 | **3.88** |
+| captures/game | 8.30 | 6.19 |
+| pawn storms/game | 1.84 | 1.31 |
+| forward pieces/own move | 0.82 | **1.06** |
+| sac -> check within 3 | 53% | **64%** |
+| sac -> check within 5 | 92% | **97%** |
+| attacker-liquidation | 15% | **9%** |
 
 OpenTal usually loses these games — expected against an engine that never
 panics — but the scoreboard is the style columns, not the result. The root
 aggression bias (fail-low queen grabs), doubled check bonuses (check spam),
 and unlimited initiative at a large deficit (desperado sacs) were fixed
-earlier. The initiative term now requires three attackers near the enemy king,
-which brought checks, storms and both follow-up columns to Tal's row. Sacs and
-captures are low, liquidation is high, and forward pieces are high; those are
-reported rather than tuned away. Capture count also depends on the opponent:
+earlier. `W_HUNT` now pays for the attack that survives a sac (two attackers,
+one defender, broken shield), capped and tapered by the material deficit.
+Sacs, checks, follow-up, forward pieces and liquidation sit at Tal's row.
+Storms fell and captures stay low; capture count also depends on the opponent:
 the same build makes 10.1 captures/game against v1, which does not defend like
 Stockfish.
 
@@ -81,7 +81,8 @@ builds, so only changes that survive several levers are kept. Normalising to
 0.250 captures per own move from ply 16; OpenTal 0.107 and 0.164 — because
 games have different lengths. See `VERSION_HISTORY.md` for the rejected
 experiments, including four bounded sacrifice-lookahead variants in `search.cpp`
-that inflated checks and are not in the current build.
+that inflated checks and are not in the current build, and the rejected `W_HUNT`
+caps/gates that produced check spam or runaway sacs.
 
 The guardrail: do not tune to change the result column. Tune only when a style
 metric drifts away from Tal's row.

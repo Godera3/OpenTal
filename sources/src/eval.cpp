@@ -735,6 +735,24 @@ int cEngine::Evaluate(POS *p, eData *e) {
                 if (deficit > 500) deficit_factor = Max(0, deficit_factor - (deficit - 500) / 4);
                 int comp = (cap * initiative * deficit_factor) / (100 * 100);
                 Add(e, sd, comp, comp / 2);
+                // A sac pays off only if the attack survives the exchange:
+                // few defenders left, a broken shield, our pieces still near.
+                // Same deficit taper as initiative, so desperadoes starve.
+                int defenders = 0;
+                U64 opp_pieces = p->mClBb[op] & ~p->Pawns(op);
+                while (opp_pieces) {
+                    int dsq = BB.PopFirstBit(&opp_pieces);
+                    if (Dist.metric[dsq][opp_king] < 3) defenders++;
+                }
+                int shield_op = BB.PopCnt(p->Pawns(op) &
+                    (Mask.ks_castle[op] | Mask.qs_castle[op]));
+                int exposed = 6 - Min(6, shield_op);
+                int hcap = Par.values[W_HUNT];
+                if (hcap > 0 && near >= 2 && defenders <= 1 && exposed > 0) {
+                    int hunt = Min(8, near + exposed - 1) * (3 - defenders);
+                    int hcomp = (hcap * hunt * deficit_factor) / (24 * 100);
+                    Add(e, sd, hcomp, hcomp / 2);
+                }
             }
         }
     }
