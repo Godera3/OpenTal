@@ -18,42 +18,43 @@
   const MARKUP = `
     <style>
       :host { all: initial; }
-      .wrap { position: absolute; inset: 0; font-family: "Inter", "Segoe UI", system-ui, sans-serif; }
+      .wrap { position: absolute; inset: 0; overflow: visible; font-family: "Inter", "Segoe UI", system-ui, sans-serif; }
       svg.board { display: block; width: 100%; height: 100%; overflow: visible; }
       .pv-arrow { stroke-linecap: round; filter: drop-shadow(0 0 0.08px rgba(0,0,0,0.6)); }
       .pv1 { stroke: #60a5fa; stroke-width: 0.14; opacity: 0.95; }
       .pv2 { stroke: #ffd166; stroke-width: 0.11; opacity: 0.78; }
       .pv3 { stroke: #c4b5fd; stroke-width: 0.11; opacity: 0.78; }
       .evalbar {
-        position: absolute; left: 6px; top: 10px; bottom: 10px; width: 12px;
-        border-radius: 999px; overflow: hidden; pointer-events: none;
+        position: absolute; left: -28px; top: 0; bottom: 0; width: 16px;
+        border-radius: 8px; overflow: hidden; pointer-events: none; z-index: 3;
         background: linear-gradient(180deg, #2b2c33 0%, #14151b 100%);
-        border: 1px solid rgba(255,255,255,0.14);
-        box-shadow: 0 10px 24px rgba(0,0,0,0.35), inset 0 0 0 1px rgba(255,255,255,0.03);
+        border: 1px solid rgba(255,255,255,0.18);
+        box-shadow: 0 10px 28px rgba(0,0,0,0.45), inset 0 0 0 1px rgba(255,255,255,0.04);
       }
       .eval-fill {
         position: absolute; left: 0; right: 0; bottom: 0; height: 50%;
-        background: linear-gradient(180deg, #ffffff 0%, #dfe3ea 100%);
-        box-shadow: inset 0 1px 0 rgba(255,255,255,0.7);
+        background: linear-gradient(180deg, #ffffff 0%, #e6e9f0 55%, #d8dde8 100%);
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.8);
         transition: height .35s cubic-bezier(.22,.8,.24,1), top .35s cubic-bezier(.22,.8,.24,1), bottom .35s cubic-bezier(.22,.8,.24,1);
       }
       .eval-mid {
-        position: absolute; left: 1px; right: 1px; top: 50%; height: 1px;
-        background: rgba(255,209,102,0.45); transform: translateY(-0.5px);
+        position: absolute; left: 2px; right: 2px; top: 50%; height: 2px; border-radius: 2px;
+        background: rgba(255,209,102,0.55); transform: translateY(-1px);
+        z-index: 2;
       }
       .eval-text {
-        position: absolute; left: 22px; top: 50%; transform: translateY(-50%);
-        padding: 2px 6px; border-radius: 999px; pointer-events: none;
-        font: 700 10px/1.2 ui-monospace, SFMono-Regular, monospace;
-        color: #f3efe6; background: rgba(10,10,14,0.72);
-        border: 1px solid rgba(255,255,255,0.12);
-        box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+        position: absolute; left: -36px; bottom: -22px; width: 32px; text-align: center;
+        padding: 3px 0; border-radius: 7px; pointer-events: none; z-index: 3;
+        font: 700 10px/1.1 ui-monospace, SFMono-Regular, monospace;
+        color: #f7f4ea; background: rgba(12,12,16,0.88);
+        border: 1px solid rgba(255,209,102,0.22);
+        box-shadow: 0 6px 16px rgba(0,0,0,0.35);
         white-space: nowrap;
       }
       .topbar {
-        position: absolute; top: 6px; left: 42px; right: 6px;
+        position: absolute; top: 6px; left: 6px; right: 6px;
         display: flex; align-items: flex-start; justify-content: space-between; gap: 8px;
-        pointer-events: none;
+        pointer-events: none; z-index: 4;
       }
       .left { display: flex; flex-direction: column; gap: 4px; max-width: calc(100% - 44px); }
       .badge, .gear, .chip {
@@ -76,9 +77,9 @@
         padding: 3px 8px; border-radius: 999px;
         font: 600 11px/1.2 ui-monospace, SFMono-Regular, monospace;
       }
-      .chip.pv1 { border-color: rgba(96,165,250,0.35); color: #60a5fa; }
-      .chip.pv2 { border-color: rgba(255,209,102,0.35); color: #ffd166; }
-      .chip.pv3 { border-color: rgba(196,181,253,0.35); color: #c4b5fd; }
+      .chip.pv1 { border-color: rgba(96,165,250,0.4); color: #60a5fa; }
+      .chip.pv2 { border-color: rgba(255,209,102,0.4); color: #ffd166; }
+      .chip.pv3 { border-color: rgba(196,181,253,0.4); color: #c4b5fd; }
       .gear {
         width: 30px; height: 30px; border-radius: 10px; cursor: pointer; flex: 0 0 auto;
         display: grid; place-items: center; font-size: 15px; transition: transform .15s ease, background .15s ease;
@@ -431,7 +432,9 @@
     clear();
     const best = result && result.bestmove != null ? String(result.bestmove) : '';
     const hasLines = result && Array.isArray(result.lines) && result.lines.length > 0;
-    const candidates = hasLines ? result.lines.slice(0, 3) : (best ? [{ move: best, score: result.score, mate: result.mate }] : []);
+    const candidates = hasLines
+      ? result.lines.filter((line) => line && /^([a-h][1-8])([a-h][1-8])([qrbn])?$/.test(line.move || '')).slice(0, 3)
+      : (best ? [{ move: best, score: result.score, mate: result.mate }] : []);
 
     if (!candidates.length || !/^([a-h][1-8])([a-h][1-8])/.test(candidates[0].move || best)) {
       const shown = best ? best : '(empty)';
@@ -454,11 +457,14 @@
     lastEval = (top.score == null && top.mate == null) ? { book: true } : { score: top.score, mate: top.mate };
     renderEval();
 
-    if (candidates.length > 1) {
-      candidates.forEach((line, index) => {
+    const linesToShow = hasLines ? candidates : (candidates.length > 1 ? candidates : []);
+    if (linesToShow.length > 1) {
+      linesToShow.forEach((line, index) => {
         const chip = document.createElement('span');
         chip.className = 'chip pv' + (index + 1);
-        chip.textContent = (index + 1) + '. ' + line.move + ' ' + formatScore(line);
+        const pv = Array.isArray(line.pv) ? line.pv.slice(0, 3).join(' ') : '';
+        chip.textContent = (index + 1) + '. ' + line.move + ' ' + formatScore(line) + (pv ? '  ' + pv : '');
+        chip.title = Array.isArray(line.pv) ? line.pv.join(' ') : line.move;
         lineBox.appendChild(chip);
       });
       lineBox.classList.remove('hidden');
