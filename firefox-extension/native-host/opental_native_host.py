@@ -19,6 +19,8 @@ ENGINE = ROOT / "opental"
 MAX_MOVES = 500
 MIN_MOVETIME = 50
 MAX_MOVETIME = 10000
+MIN_DEPTH = 1
+MAX_DEPTH = 30
 
 SCORE_RE = re.compile(r"\bscore\s+(cp|mate)\s+(-?\d+)")
 PV_RE = re.compile(r"\bpv\s+(.*)$")
@@ -53,6 +55,30 @@ def clean_token(value, label):
     return value
 
 
+BOOL_OPTIONS = {"UseBook", "VerboseBook", "Ponder", "TalMode", "TalRandom"}
+SPIN_OPTIONS = {
+    "Hash": (1, 4096),
+    "Threads": (1, 8),
+    "MultiPV": (1, 12),
+}
+
+
+def parse_option(name, value):
+    if name in BOOL_OPTIONS:
+        if isinstance(value, bool):
+            return "true" if value else "false"
+        if isinstance(value, str) and value.lower() in {"true", "false"}:
+            return value.lower()
+        raise ValueError("invalid bool for " + name)
+    if name in SPIN_OPTIONS:
+        low, high = SPIN_OPTIONS[name]
+        number = int(value)
+        if number < low or number > high:
+            raise ValueError(name + " out of range")
+        return str(number)
+    raise ValueError("unknown option: " + name)
+
+
 class EngineBridge:
     def __init__(self):
         if not ENGINE.is_file():
@@ -69,6 +95,10 @@ class EngineBridge:
         self.stdin_lock = threading.Lock()
         self.generation = 0
         self.requests = queue.Queue()
+        self.movetime = 250
+        self.depth = 12
+        self.search_mode = "time"
+        self.configured = {}
         self.name = self._handshake()
         threading.Thread(target=self._search_loop, daemon=True).start()
 
@@ -91,11 +121,48 @@ class EngineBridge:
                 name = line[8:]
             if line == "uciok":
                 break
-        self._uci("setoption name MultiPV value 3")
+        self._apply_options({"MultiPV": 1})
         self._uci("isready")
         while self.proc.stdout.readline().strip() != "readyok":
             pass
         return name or "unknown"
+
+    def _apply_options(self, options):
+        for name, value in options.items():
+            parsed = parse_option(name, value)
+            self._uci("setoption name " + name + " value " + parsed)
+            self.configured[name] = value
+
+    def configure(self, msg):
+        options = msg.get("options", {})
+        if options is None:
+            options = {}
+        if not isinstance(options, dict):
+            raise ValueError("invalid options")
+        movetime = msg.get("movetime", self.movetime)
+        movetime = max(MIN_MOVETIME, min(MAX_MOVETIME, int(movetime)))
+        depth = msg.get("depth", self.depth)
+        depth = max(MIN_DEPTH, min(MAX_DEPTH, int(depth)))
+        search_mode = msg.get("searchMode", self.search_mode)
+        if search_mode not in ("time", "depth"):
+            search_mode = self.search_mode
+        self.generation += 1
+        self.stop()
+        self._apply_options(options)
+        self.movetime = movetime
+        self.depth = depth
+        self.search_mode = search_mode
+        self._uci("isready")
+        while self.proc.stdout.readline().strip() != "readyok":
+            pass
+        return {
+            "type": "configured",
+            "options": self.configured,
+            "movetime": self.movetime,
+            "depth": self.depth,
+            "searchMode": self.search_mode,
+            "engine": self.name,
+        }
 
     def stop(self):
         with self.stdin_lock:
@@ -109,8 +176,13 @@ class EngineBridge:
         if not isinstance(moves, list) or len(moves) > MAX_MOVES:
             raise ValueError("invalid move list")
         moves = [clean_token(m, "move") for m in moves]
-        movetime = int(msg.get("movetime", 1000))
+        movetime = int(msg.get("movetime", self.movetime))
         movetime = max(MIN_MOVETIME, min(MAX_MOVETIME, movetime))
+        depth = int(msg.get("depth", self.depth))
+        depth = max(MIN_DEPTH, min(MAX_DEPTH, depth))
+        search_mode = msg.get("searchMode", self.search_mode)
+        if search_mode not in ("time", "depth"):
+            search_mode = self.search_mode
 
         position = "position startpos" if fen == "startpos" else "position fen " + fen
         if moves:
@@ -118,11 +190,11 @@ class EngineBridge:
 
         self.generation += 1
         self.stop()
-        self.requests.put((self.generation, msg.get("id"), position, movetime))
+        self.requests.put((self.generation, msg.get("id"), position, search_mode, movetime, depth))
 
     def _search_loop(self):
         while True:
-            gen, msg_id, position, movetime = self.requests.get()
+            gen, msg_id, position, search_mode, movetime, depth = self.requests.get()
             if gen != self.generation:
                 continue
             try:
@@ -131,8 +203,12 @@ class EngineBridge:
                 self._uci("isready")
                 while self.proc.stdout.readline().strip() != "readyok":
                     pass
-                self._uci("go movetime " + str(movetime))
-                lines = self._collect(gen, movetime)
+                if search_mode == "depth":
+                    self._uci("go depth " + str(depth))
+                    lines = self._collect(gen, "depth", depth)
+                else:
+                    self._uci("go movetime " + str(movetime))
+                    lines = self._collect(gen, "time", movetime)
                 if gen != self.generation:
                     continue
                 send(self._result(msg_id, lines))
@@ -140,23 +216,27 @@ class EngineBridge:
                 if gen == self.generation:
                     send({"type": "error", "id": msg_id, "message": str(exc)})
 
-    def _collect(self, gen, movetime):
+    def _collect(self, gen, mode, value):
         found = {}
         best = None
-        deadline = time.monotonic() + movetime / 1000 + 5
+        if mode == "depth":
+            deadline = time.monotonic() + 120
+        else:
+            deadline = time.monotonic() + value / 1000 + 5
         while best is None and time.monotonic() < deadline:
             line = self.proc.stdout.readline()
             if not line:
                 break
             line = line.strip()
             if line.startswith("info ") and " score " in line:
-                index = int((MULTIPV_RE.search(line) or [None, "1"])[1])
+                multipv = MULTIPV_RE.search(line)
                 score = SCORE_RE.search(line)
                 pv = PV_RE.search(line)
                 if score and pv:
+                    index = int(multipv.group(1)) if multipv else 1
                     found[index] = {
-                        "move": pv.group(2).split()[0],
-                        "pv": pv.group(2).split(),
+                        "move": pv.group(1).split()[0],
+                        "pv": pv.group(1).split(),
                         "score": int(score.group(2)) if score.group(1) == "cp" else None,
                         "mate": int(score.group(2)) if score.group(1) == "mate" else None,
                     }
@@ -197,6 +277,8 @@ def main():
                 send({"type": "pong", "engine": bridge.name})
             elif kind == "analyse":
                 bridge.analyse(msg)
+            elif kind == "configure":
+                send(bridge.configure(msg))
             elif kind == "stop":
                 bridge.stop()
             elif kind == "quit":

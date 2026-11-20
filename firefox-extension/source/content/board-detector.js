@@ -14,13 +14,19 @@
 
   let board = null;
   let lastFen = null;
-  let bridgeFen = null;
+  let bridgeState = null;
   let revision = 0;
   const listeners = [];
 
   window.addEventListener('message', (event) => {
     if (event.source !== window || !event.data || event.data.source !== 'opental-bridge') return;
-    if (typeof event.data.fen === 'string') bridgeFen = event.data.fen;
+    if (typeof event.data.fen === 'string') {
+      bridgeState = {
+        fen: event.data.fen,
+        flipped: typeof event.data.flipped === 'boolean' ? event.data.flipped : null,
+        turn: typeof event.data.turn === 'string' ? event.data.turn : null
+      };
+    }
   });
 
   try {
@@ -43,7 +49,7 @@
   }
 
   function fromBridge() {
-    return bridgeFen;
+    return bridgeState && bridgeState.fen ? bridgeState.fen : null;
   }
 
   function fromSiteApi() {
@@ -123,17 +129,31 @@
     return placement + ' ' + turn + ' ' + (castling || '-') + ' - 0 1';
   }
 
-  function flipped() {
-    return !!document.querySelector(
-      '.cg-wrap.orientation-black, .orientation-black, wc-chess-board[flipped]'
-    );
+  function domFlipped() {
+    const elements = [
+      board,
+      document.querySelector('wc-chess-board'),
+      document.querySelector('chess-board'),
+      document.querySelector('cg-board')
+    ].filter(Boolean);
+    for (const element of elements) {
+      if (element.classList && element.classList.contains('flipped')) return true;
+      if (element.hasAttribute && element.hasAttribute('flipped')) return true;
+      if (element.getAttribute && element.getAttribute('data-flipped') === 'true') return true;
+      if (element.closest && element.closest('.flipped, .board-flipped, .orientation-black')) return true;
+    }
+    return !!document.querySelector('.cg-wrap.orientation-black, .orientation-black, .board-layout-chessboard.flipped');
   }
 
   function current() {
     if (!board || !board.isConnected) findBoard();
     const fen = fromBridge() || fromSiteApi() || fromDom();
     if (!fen) return null;
-    return { fen, flipped: flipped(), board, revision, source: fromBridge() ? 'bridge' : (fromSiteApi() ? 'api' : 'dom') };
+    const flipped = bridgeState && typeof bridgeState.flipped === 'boolean'
+      ? bridgeState.flipped
+      : domFlipped();
+    const turn = bridgeState && bridgeState.turn ? bridgeState.turn : (fen.split(' ')[1] || null);
+    return { fen, flipped, board, revision, turn, source: fromBridge() ? 'bridge' : (fromSiteApi() ? 'api' : 'dom') };
   }
 
   function tick() {
@@ -160,7 +180,7 @@
       listeners.push(listener);
       findBoard();
       tick();
-      setInterval(tick, 300);
+      setInterval(tick, 250);
       const observer = new MutationObserver(scheduleTick);
       observer.observe(document.documentElement, { childList: true, subtree: true });
       window.addEventListener('resize', scheduleTick);
