@@ -12,11 +12,11 @@ gets dragged into the open and they crack. Engines do not get rattled. A sacrifi
 that terrifying a person is simply a lost piece against a calculation engine.
 So win/loss is recorded for context, but the yardstick is the behaviour:
 
-- **true sacs/game** — captures by a bigger piece where the mover's material is
-  actually down at least 100cp once the opponent has replied. An earlier version
-  counted every big-piece-takes-small-piece capture, so winning a free pawn with
-  a queen registered as a "sacrifice"; that inflated both rows and hid the fact
-  that OpenTal donates material far more often than Tal.
+- **true sacs/game** — captures by a bigger piece where the mover is still down
+  at least 100cp after the exchange settles (up to three more plies). Counting
+  only the immediate reply made queen trades like `Bxc4 Qxd1+ Rxd1` look like
+  sacrifices; counting every big-piece-takes-small-piece capture was worse still
+  — winning a free pawn with a queen registered as Tal style.
 - **checks/game** — moves giving check
 - **sac -> check within 3/5** — whether a sacrifice actually generates an attack
   (this separates a sac from a donation)
@@ -51,17 +51,19 @@ Opponent binaries are read from `~/.arena_linux/Engines`; override with
 
 | Metric | Real Tal (100 games) | OpenTal (6 games) |
 |---|---|---|
-| true sacs/game | 1.33 | **2.50** |
-| checks/game | 3.57 | 3.33 |
-| sac -> check within 3 | 59% | 47% |
-| sac -> check within 5 | 98% | 67% |
-| attacker-liquidation | 13% | 0% |
+| true sacs/game | 1.98 | **2.33** |
+| checks/game | 3.57 | 3.67 |
+| sac -> check within 3 | 52% | 29% |
+| sac -> check within 5 | 88% | 64% |
+| attacker-liquidation | 15% | 29% |
 
 OpenTal loses these games — expected against an engine that never panics — but
-the scoreboard is the style columns, not the result. With the corrected sac
-definition it is clear the engine sacrifices almost twice as often as Tal and
-the sacs generate fewer follow-up checks. That is the donation failure mode,
-not Tal's intuition.
+the scoreboard is the style columns, not the result. Sacrifice frequency is now
+close to Tal's row and check frequency matches it: the old root aggression bias
+was promoting fail-low queen grabs, and removing it stopped the no-brainer
+donations. The remaining gap is what happens after the sac — fewer follow-up
+checks and more liquidation of the attacking pieces. That is reported rather
+than tuned away; the stop condition for this defect was two bounded attempts.
 
 The guardrail: do not tune to change the result column. Tune only when a style
 metric drifts away from Tal's row.
@@ -77,9 +79,9 @@ depth 5, plus the objective engine verdict on the queen sac:
 
     PYTHONPATH=/tmp/opencode/chesslib python3 testing/tal_specimen_probe.py
 
-Current result: OpenTal matches 17/41 plies. It finds the small sacrifices
+Current result: OpenTal matches 16/41 plies. It finds the small sacrifices
 (`Bxd5`, `Nxd5`, `Rxh4`, `Rxh3`) but refuses the decisive ones (`Qxg6+`,
 `Rxe7+`) because its attack compensation is gated on owning a queen and capped
-at 300 cp. Stockfish scores the post-sac position around -7000 cp: the sac was
+at 300 cp. Stockfish scores the post-sac position around -7100 cp: the sac was
 objectively lost and worked only because the human resigned. That is the
 style-vs-soundness tradeoff this probe exists to make visible.

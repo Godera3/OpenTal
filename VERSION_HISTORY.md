@@ -3,8 +3,8 @@
 ## v1.1 "Pure Mikhail Tal Edition" — baseline (preserved)
 
 This is the version that exists right now. It is frozen at git tag
-`v1.1-baseline` and on branch `main` at commit `03c77a6`. Do not modify it in
-place. All v2 work happens on branch `v2-tal-style`.
+`v1.1-baseline` (`a4e0191`) and on branch `main` (`5e5e77a`). Do not modify it
+in place. All v2 work happens on branch `v2-tal-style`.
 
 ### What it is
 
@@ -68,7 +68,7 @@ Branch `v2-tal-style`. This is the `opental` binary; v1.1 remains frozen as
 Where v1 attacked only when the attack was provably sound, v2 is built to
 subordinate material to the attack and to seek chaos. Five changes:
 
-1. **One bounded initiative score** (`eval.cpp`, `W_INITIATIVE` = 500). The old
+1. **One bounded initiative score** (`eval.cpp`, `W_INITIATIVE` = 300). The old
    stack of small sacrifice bonuses is gone. A material deficit now earns back
    up to 500 cp, scaled by a saturated king-attack measure and the number of
    pieces near the enemy king, and only while the attacker still has a queen.
@@ -86,9 +86,11 @@ subordinate material to the attack and to seek chaos. Five changes:
    to be seen. (An explicit sacrifice extension was tried and removed: it
    stacked with check/recapture extensions and blew up the tree. The pruning
    exemptions alone are enough.)
-4. **Root aggression bias** (`search.cpp`). Checks and captures are preferred
-   among near-equal moves, so Tal-style forcing lines get the nod over passive
-   ones.
+4. **No root bias on search bounds** (`search.cpp`). An earlier build added
+   +4 cp for captures and +8 for checks at the root. That looked like Tal
+   aggression but promoted fail-low queen grabs: a null-window search returns a
+   bound, not an exact score, and the small bonus pushed a bad capture past good
+   quiet moves. The bias is gone; forcing play comes from the evaluation instead.
 5. **`TalRandom` option** (`uci_options.cpp`, default false). When on, the
    aggression bias is widened and a small bounded random jitter is added to root
    move selection, so the engine is not deterministic — the unpredictability
@@ -132,3 +134,40 @@ build:
 - Style survives the fixes: post-fix self-play still produced ~4.75 sacs and
   ~6.5 checks per game (Tal's own games average 3.83 sacs and 3.68 checks), and
   enemy king shield was driven to 0 in every game.
+
+## No-brainer sacrifice defect (defect 2)
+
+The user's verdict on the corrected harness was that OpenTal still sacrificed
+"like a no brainer". The root cause was not the initiative term but a search
+bug in `SearchRoot()`: a small positive bias was added to each move's score at
+the root (+4 cp for a capture, +8 for a check). In a null-window search a move
+that fails low returns an upper bound, not an exact score, so a queen grab
+whose true value was around -500 cp could come back as a bound near zero and
+then be promoted by the bias.
+
+The test position was the Tal specimen at move 15: `15...Qxb4` loses a queen to
+`16.cxb4`, but OpenTal chose it. With the bias removed it plays `15...Rac8`
+instead. The +8 check bias had the same flaw; removing both leaves Tal style
+to the evaluation, which is where it belongs. Two bounded tuning attempts were
+allowed — disabling `W_INITIATIVE` outright made style worse and was reverted,
+and removing the root bias is the fix that shipped. Tuning stopped there.
+
+The harness metric was corrected alongside the engine fix. A "true sac" is now
+a capture by a bigger piece where the mover is still down at least 100 cp once
+the exchange settles (up to three plies): counting only the immediate reply
+made `Bxc4 Qxd1+ Rxd1` look like a queen sacrifice. This raised Tal's own
+baseline from 1.33 to 1.98 sacs/game. Final corrected numbers, Stockfish 10,
+depth 5, six games from Tal positions:
+
+| Metric | Real Tal | OpenTal before | OpenTal after |
+|---|---|---|---|
+| true sacs/game | 1.98 | 3.17 | **2.33** |
+| checks/game | 3.57 | 3.33 | **3.67** |
+| sac -> check within 5 | 88% | 74% | 64% |
+| attacker-liquidation | 15% | 0% | 29% |
+
+Sacrifice frequency and check frequency now sit close to Tal's row and the
+specific hanging-queen blunder is gone. The remaining gap is follow-up: sacs
+still turn into checks less often than Tal's, and attacking pieces liquidate
+more often. That is reported, not tuned away — the sample is six games and the
+stop condition was two bounded attempts. Result column is context only.

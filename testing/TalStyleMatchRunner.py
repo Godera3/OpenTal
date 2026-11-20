@@ -162,14 +162,15 @@ def measure(fen, prefix, moves, color, result):
                 checks += 1
 
             # A capture by a bigger piece is only a sacrifice if the material
-            # is actually gone once the opponent has replied. Otherwise it is
-            # just winning a pawn with a queen, and counting it as Tal style
-            # made a donation machine look like the Wizard of Riga.
+            # is still gone after the exchange sequence settles. Stopping at
+            # the opponent's reply counts Qxd1+ Rxd1 as a queen sacrifice.
             if victim is not None and VAL[attacker] > VAL[victim] + 100:
-                if i + 1 < len(moves):
-                    board.push(chess.Move.from_uci(moves[i + 1]))
+                pushed = 0
+                for j in range(i + 1, min(i + 4, len(moves))):
+                    board.push(chess.Move.from_uci(moves[j]))
+                    pushed += 1
                 net = material(board, color) - mat_before
-                if i + 1 < len(moves):
+                for _ in range(pushed):
                     board.pop()
 
                 if net <= -100:

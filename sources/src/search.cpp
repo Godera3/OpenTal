@@ -313,10 +313,9 @@ int cEngine::SearchRoot(POS *p, int ply, int alpha, int beta, int depth, int *pv
 
 		if (Glob.MoveToAvoid(move)) { p->UndoMove(move, u); continue; }
 
-		// TAL: root preference for checks and captures; TalRandom widens it
+		// Root bias on PVS bound scores promoted fail-low queen grabs to best
+		// move. Tal style lives in the eval, not in overriding the search.
 		int aggr = 0;
-		if (p->InCheck()) aggr = Par.tal_random ? 14 : 8;
-		else if (victim != NO_TP) aggr = Par.tal_random ? 8 : 4;
 
 		// Per-thread xorshift: rand() is shared global state under Lazy SMP.
 		int jitter = 0;
@@ -437,7 +436,7 @@ int cEngine::SearchRoot(POS *p, int ply, int alpha, int beta, int depth, int *pv
 			return score;
 		}
 
-		// NEW BEST MOVE (with aggression bias - prefer checks/captures when close)
+		// NEW BEST MOVE (jitter is the only bias left, and only with TalRandom)
 
 		if (score + aggr + jitter > best + best_aggr + best_jitter) {
 			best = score;
