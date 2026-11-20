@@ -724,8 +724,8 @@ int cEngine::Evaluate(POS *p, eData *e) {
                     int sq = BB.PopFirstBit(&all_our);
                     if (Dist.metric[sq][opp_king] < 4) near++;
                 }
-                if (near < 2) initiative = 0;
-                else initiative = Min(100, initiative + (near - 1) * 6);
+                if (near < 3) initiative = 0;
+                else initiative = Min(100, initiative + (near - 2) * 6);
 
                 // Compensation saturates by an exchange's worth of deficit,
                 // then tapers away once we are a rook down. Past that point
