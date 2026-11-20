@@ -16,6 +16,9 @@
   let lastFen = null;
   let bridgeState = null;
   let revision = 0;
+  let dragging = false;
+  let domObserver = null;
+  let observedRoot = null;
   const listeners = [];
 
   window.addEventListener('message', (event) => {
@@ -41,6 +44,9 @@
       const found = document.querySelector(selector);
       if (found) {
         board = found;
+        if (typeof syncObserver === 'function') {
+          try { syncObserver(); } catch (error) { /* init order */ }
+        }
         return board;
       }
     }
@@ -63,19 +69,25 @@
     return null;
   }
 
-  function collectPieces(root, out) {
-    if (!root || !root.querySelectorAll) return;
-    root.querySelectorAll(PIECE_SELECTOR).forEach((el) => out.push(el));
-    root.querySelectorAll('*').forEach((el) => {
-      if (el.shadowRoot) collectPieces(el.shadowRoot, out);
-    });
+  function collectPieces(root, out, depth) {
+    if (!root || !root.querySelectorAll || depth > 4) return;
+    try {
+      root.querySelectorAll(PIECE_SELECTOR).forEach((el) => out.push(el));
+      // Traverse shadow roots on likely hosts instead of scanning every element.
+      root.querySelectorAll('wc-chess-board, chess-board, cg-board, .board').forEach((el) => {
+        if (el.shadowRoot) collectPieces(el.shadowRoot, out, depth + 1);
+      });
+      if (root.host && root !== document) {
+        // already inside a shadow root; avoid re-walking all descendants
+      }
+    } catch (error) { /* ignore */ }
   }
 
   function fromDom() {
     const root = board || document;
     const pieces = [];
-    collectPieces(root, pieces);
-    if (!pieces.length) collectPieces(document, pieces);
+    collectPieces(root, pieces, 0);
+    if (!pieces.length && root !== document) collectPieces(document, pieces, 0);
     if (!pieces.length) return null;
 
     const squares = new Array(64).fill('');
@@ -156,7 +168,8 @@
     return { fen, flipped, board, revision, turn, source: fromBridge() ? 'bridge' : (fromSiteApi() ? 'api' : 'dom') };
   }
 
-  function tick() {
+  function tick(force) {
+    if (dragging && !force) return;
     const state = current();
     if (!state || state.fen === lastFen) return;
     lastFen = state.fen;
@@ -168,10 +181,31 @@
 
   let scheduled = false;
   function scheduleTick() {
-    if (scheduled) return;
+    if (dragging || scheduled) return;
     scheduled = true;
-    setTimeout(() => { scheduled = false; tick(); }, 60);
+    setTimeout(() => { scheduled = false; tick(); }, 100);
   }
+
+  function syncObserver() {
+    const root = board || document.documentElement;
+    if (!root || root === observedRoot) return;
+    try {
+      if (domObserver) domObserver.disconnect();
+      domObserver = new MutationObserver(scheduleTick);
+      domObserver.observe(root, { childList: true, subtree: true });
+      observedRoot = root;
+    } catch (error) { /* ignore */ }
+  }
+
+  window.addEventListener('pointerdown', () => { dragging = true; }, true);
+  const endDrag = () => {
+    if (!dragging) return;
+    dragging = false;
+    setTimeout(() => tick(true), 40);
+    setTimeout(() => tick(true), 220);
+  };
+  window.addEventListener('pointerup', endDrag, true);
+  window.addEventListener('pointercancel', endDrag, true);
 
   window.OpenTalDebug = window.OpenTalDebug || { lastState: null };
 
@@ -179,11 +213,20 @@
     start(listener) {
       listeners.push(listener);
       findBoard();
-      tick();
-      setInterval(tick, 250);
-      const observer = new MutationObserver(scheduleTick);
-      observer.observe(document.documentElement, { childList: true, subtree: true });
-      window.addEventListener('resize', scheduleTick);
+      syncObserver();
+      tick(true);
+      setInterval(() => {
+        if (!board || !board.isConnected) {
+          const prev = observedRoot;
+          findBoard();
+          if (observedRoot !== (board || document.documentElement)) syncObserver();
+          if (prev && !board) syncObserver();
+        }
+        syncObserver();
+        tick();
+      }, 400);
+      window.addEventListener('resize', () => { placeOrTick(); });
+      function placeOrTick() { scheduleTick(); }
     },
     current
   };

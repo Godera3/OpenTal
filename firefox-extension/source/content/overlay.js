@@ -285,6 +285,7 @@
     syncForm();
   }
 
+  let placeQueued = false;
   function place() {
     ensureHost();
     const state = window.OpenTalBoard.current();
@@ -296,6 +297,14 @@
     host.style.top = rect.top + 'px';
     host.style.width = rect.width + 'px';
     host.style.height = rect.height + 'px';
+  }
+  function schedulePlace() {
+    if (placeQueued) return;
+    placeQueued = true;
+    requestAnimationFrame(() => {
+      placeQueued = false;
+      place();
+    });
   }
 
   function squareCentre(square) {
@@ -444,6 +453,6 @@
     requestAnalysis(state);
   });
 
-  window.addEventListener('resize', place);
-  window.addEventListener('scroll', place, true);
+  window.addEventListener('resize', schedulePlace);
+  window.addEventListener('scroll', schedulePlace, true);
 })();

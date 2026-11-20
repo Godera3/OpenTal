@@ -81,33 +81,51 @@
     return null;
   }
 
-  function emit() {
+  let lastEmitted = '';
+  let dragging = false;
+
+  function emit(force) {
+    if (dragging && !force) return;
     const game = findGame();
     let fen = readFen(game);
     if (!fen) return;
     const turn = readTurn(game);
     if (turn) fen = applyTurnToFen(fen, turn);
+    const flipped = readFlipped(game);
+    const payload = fen + '|' + (flipped === null ? '' : String(flipped)) + '|' + (turn || '');
+    if (!force && payload === lastEmitted) return;
+    lastEmitted = payload;
     window.postMessage({
       source: 'opental-bridge',
       fen,
-      flipped: readFlipped(game),
+      flipped,
       turn
     }, '*');
   }
 
   let scheduled = false;
   function scheduleEmit() {
-    if (scheduled) return;
+    if (dragging || scheduled) return;
     scheduled = true;
-    setTimeout(() => { scheduled = false; emit(); }, 80);
+    setTimeout(() => { scheduled = false; emit(); }, 120);
   }
 
-  setInterval(emit, 250);
+  setInterval(() => emit(), 400);
   if (document.documentElement) {
     new MutationObserver(scheduleEmit).observe(document.documentElement, {
       childList: true, subtree: true
     });
   }
-  window.addEventListener('load', emit);
-  emit();
+
+  window.addEventListener('pointerdown', () => { dragging = true; }, true);
+  const endDrag = () => {
+    if (!dragging) return;
+    dragging = false;
+    setTimeout(() => emit(true), 30);
+    setTimeout(() => emit(true), 180);
+  };
+  window.addEventListener('pointerup', endDrag, true);
+  window.addEventListener('pointercancel', endDrag, true);
+  window.addEventListener('load', () => emit(true));
+  emit(true);
 })();
