@@ -445,18 +445,63 @@
     syncForm();
   }
 
+  function findBoardElementFallback() {
+    const selectors = [
+      'wc-chess-board', 'chess-board', 'cg-board',
+      '#board-single', '#board', '.board-layout-main', '.board'
+    ];
+    let best = null;
+    let bestArea = 0;
+    for (const sel of selectors) {
+      try {
+        document.querySelectorAll(sel).forEach((el) => {
+          if (!el || !el.isConnected) return;
+          const rect = el.getBoundingClientRect();
+          const area = rect.width * rect.height;
+          if (rect.width >= 80 && rect.height >= 80 && area >= bestArea) {
+            best = el;
+            bestArea = area;
+          }
+        });
+      } catch (e) { /* ignore */ }
+    }
+    if (best) return best;
+    for (const sel of selectors) {
+      try {
+        const el = document.querySelector(sel);
+        if (el && el.isConnected) return el;
+      } catch (e) { /* ignore */ }
+    }
+    return null;
+  }
+
   let placeQueued = false;
+  let placeTimer = null;
   function place() {
     ensureHost();
-    const state = window.OpenTalBoard.current();
-    const element = state && state.board;
-    if (!element || !element.isConnected) return;
+    if (!host) return;
+    const state = window.OpenTalBoard && window.OpenTalBoard.current ? window.OpenTalBoard.current() : null;
+    let element = state && state.board;
+    if (!element || !element.isConnected || element.getBoundingClientRect().width < 80) {
+      element = findBoardElementFallback();
+    }
+    window.OpenTalDebug = window.OpenTalDebug || {};
+    window.OpenTalDebug.placeElement = element ? (element.tagName || element.nodeName || 'node') : null;
+    if (!element || !element.isConnected) {
+      if (!placeTimer) placeTimer = setTimeout(() => { placeTimer = null; place(); }, 250);
+      return;
+    }
     const rect = element.getBoundingClientRect();
-    if (rect.width <= 0 || rect.height <= 0) return;
-    host.style.left = rect.left + 'px';
-    host.style.top = rect.top + 'px';
-    host.style.width = rect.width + 'px';
-    host.style.height = rect.height + 'px';
+    if (rect.width <= 0 || rect.height <= 0) {
+      if (!placeTimer) placeTimer = setTimeout(() => { placeTimer = null; place(); }, 250);
+      return;
+    }
+    if (placeTimer) { clearTimeout(placeTimer); placeTimer = null; }
+    host.style.left = Math.round(rect.left) + 'px';
+    host.style.top = Math.round(rect.top) + 'px';
+    host.style.width = Math.round(rect.width) + 'px';
+    host.style.height = Math.round(rect.height) + 'px';
+    window.OpenTalDebug.hostRect = { left: rect.left, top: rect.top, width: rect.width, height: rect.height };
   }
   function schedulePlace() {
     if (placeQueued) return;
@@ -466,6 +511,7 @@
       place();
     });
   }
+  setInterval(place, 1000);
 
   function squareCentre(square) {
     const file = square.charCodeAt(0) - 97;
@@ -531,6 +577,7 @@
     ensureHost();
     window.OpenTalDebug = window.OpenTalDebug || {};
     window.OpenTalDebug.lastResult = result;
+    window.OpenTalDebug.lastDrawAt = Date.now();
     lastAnalysis = result || null;
     clear();
 
@@ -542,15 +589,18 @@
       const shown = best ? best : '(empty)';
       $('badge').textContent = 'TAL — NO MOVE [' + shown + ']';
       place();
+      schedulePlace();
       return;
     }
 
     const arrows = $('arrows');
     const lineBox = $('lines');
+    let drawn = 0;
     // draw in reverse so PV1 is on top
     for (let i = candidates.length - 1; i >= 0; i--) {
-      drawArrow(arrows, candidates[i].move, i + 1);
+      if (arrows && drawArrow(arrows, candidates[i].move, i + 1)) drawn++;
     }
+    window.OpenTalDebug.lastDrawnArrows = drawn;
 
     const top = candidates[0];
     const isBook = top.score == null && top.mate == null;
@@ -561,9 +611,9 @@
     }
     const sideName = lastTurn === 'w' ? 'White' : (lastTurn === 'b' ? 'Black' : '');
     const mine = (lastPlayer === 'w' || lastPlayer === 'b') && lastPlayer === lastTurn ? ' (you)' : '';
-    $('badge').textContent = 'TAL ' + top.move + ' · ' + label + (sideName ? ' · ' + sideName + ' to move' + mine : '');
+    if ($('badge')) $('badge').textContent = 'TAL ' + top.move + ' · ' + label + (sideName ? ' · ' + sideName + ' to move' + mine : '');
 
-    if (candidates.length > 1) {
+    if (candidates.length > 1 && lineBox) {
       candidates.forEach((line, index) => {
         const chip = document.createElement('span');
         chip.className = 'chip pv' + (index + 1);
@@ -573,8 +623,10 @@
       lineBox.classList.remove('hidden');
     }
 
-    setStatus(panelOpen ? 'Ready.' : $('status').textContent);
+    setStatus(panelOpen ? 'Ready.' : ($('status') ? $('status').textContent : ''));
     place();
+    schedulePlace();
+    requestAnimationFrame(place);
   }
 
   function requestAnalysis(state) {
