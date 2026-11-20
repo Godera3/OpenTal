@@ -76,10 +76,13 @@ the same build makes 10.1 captures/game against v1, which does not defend like
 Stockfish.
 
 Sample sizes are small: twelve games move by a whole sac per game between
-builds, so only changes that survive several levers are kept. Normalising to
-*own moves* rather than games changes the picture — Tal makes 0.106 checks and
-0.250 captures per own move from ply 16; OpenTal 0.107 and 0.164 — because
-games have different lengths. See `VERSION_HISTORY.md` for the rejected
+builds, so only changes that survive several levers are kept. The runner also
+prints **per-own-move rates** because game length varies with depth and
+opponent: Tal from ply 16 makes 0.058 sacs, 0.106 checks, 0.250 captures and
+0.055 storms per own move; depth-5 OpenTal 0.054, 0.101, 0.161, 0.034; depth-7
+0.044, 0.114, 0.158, 0.028. Depth-7 games run 33% longer, so most of the
+per-game check rise is length, not spam; the real depth-7 defect is follow-up
+(44%/67% versus 64%/97% at depth 5). See `VERSION_HISTORY.md` for the rejected
 experiments, including four bounded sacrifice-lookahead variants in `search.cpp`
 that inflated checks and are not in the current build, and the rejected `W_HUNT`
 caps/gates that produced check spam or runaway sacs.
@@ -115,7 +118,7 @@ which is what answers "which one is more Tal":
 
 `--opponent` accepts any engine from the match runner; `--old-as-a` puts v1 in
 v2's seat so both engines can be measured against the same stable opponent.
-Latest depth-6 results: v2 scores 6.5/10 against v1. Five repeat matches
+Latest depth-6 results: v2 scores 7.0/10 against v1. Five repeat matches
 against AICE scored 4.0, 4.0, 4.5, 3.0 and 5.0 out of 6 (median 4.0) — the
 weak-engine floor holds on average, but a single match is noisy, so do not
 record one score as a fixed floor. Earlier builds scored 6/10 and 6/6 before

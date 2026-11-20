@@ -379,3 +379,53 @@ One build note: `rodent.h` holds a parallel `paramNames` table, so adding an
 enum without its name entry — or rebuilding only the touched `.cpp` files —
 leaves mixed enum layouts and makes the search hang for 60 s. The parameter
 and its name were added together and the tree was rebuilt with `make clean`.
+
+## Depth-7 investigation: a length artifact and a local optimum (2026-11-20)
+
+Depth 7 still looks worse per game, but part of that is game length. Sixteen
+games averaged 102.5 plies at depth 7 against 77.2 at depth 5 (33% longer).
+Measured per own move from ply 16 (101 Tal games):
+
+| Rate per own move | Tal | d5 | d6 | d7 |
+|---|---|---|---|---|
+| sacs | 0.058 | 0.054 | 0.043 | 0.044 |
+| checks | 0.106 | 0.101 | 0.094 | 0.114 |
+| captures | 0.250 | 0.161 | 0.168 | 0.158 |
+| pawn storms | 0.055 | 0.034 | 0.048 | 0.028 |
+
+So depth-7 checks are 8% above Tal per move, not the 50% implied by the
+per-game row (5.81 vs 3.88). The genuine depth-7 defect is follow-up: 44%/67%
+versus 64%/97% at depth 5. `TalStyleMatchRunner.py` now prints both views.
+
+Eight levers were measured and none cleared the bar; the engine stays at
+`ccc99ca` with no code change:
+
+- Moving the singular extension from `depth > 5` to `depth > 6` gave identical
+  depth-7 numbers — it is not the cause.
+- `W_HUNT` cap 70 at depth 7: 2.25 sacs, 4.08 checks, 2.08 storms, 37%/44%
+  follow-up, 26% liquidation. Cap 50: 2.08 sacs, 3.92 checks, 28%/44%, 32%.
+  Lower caps buy checks and storms back but destroy follow-up.
+- Tapering the raw king-attack bonus by material deficit (start 400, /8): at
+  depth 7, 2.75 sacs, 5.33 checks, 8.92 captures, 2.00 storms, 39%/55%. A
+  harsher taper (start 250, /6) gave 2.00 sacs, 5.50 checks, 8.08 captures,
+  1.67 storms, 38%/62% at depth 7 but regressed depth 5 to 1.75 sacs, 5.88
+  checks, 1.19 storms, 1.37 forward pieces. The diagnosis — deeper search
+  finds more checks in dead positions (49 of 93 depth-7 checks come after ply
+  50) — held, but taxing the attack bonus cannot fix it without hurting real
+  sac lines.
+- `W_STORM` 350: 1.69 sacs, 5.50 checks, 1.19 storms — the storms column
+  moved the wrong way.
+- `W_FWD` 90: 2.67 sacs, 5.50 checks, 8.33 captures, 0.94 forward pieces,
+  28%/50% follow-up. `W_FWD` 60: 1.58 sacs, 4.00 checks, 1.83 storms, 16%
+  liquidation but 1.19 forward pieces and 58%/89% follow-up.
+- Gating `W_HUNT` on a check threat (`e->att >= 12`): 1.83 sacs but 6.83
+  checks — the gate funds checks everywhere, not just after sacs.
+- `W_FOREST` 200: 2.33 sacs, 4.42 checks, 6.75 captures, 1.67 storms, 14%
+  liquidation, but follow-up fell to 54%/75%.
+
+Every volume lever raises sacs/captures/storms while collapsing follow-up;
+every follow-up lever suppresses volume. With twelve games moving a whole sac
+per game between builds, none of these single-lever results is strong enough
+to replace the W_HUNT build. The remaining ~18% is not a missing idea but a
+ceiling: Tal's sacs were selected for their follow-up, and the engine has no
+cheap way to select for that without paying for it in check volume.

@@ -309,6 +309,13 @@ def tal_baseline(pgn_path, plies=None):
         base[key] = totals[key] / n
     base["fwd"] = totals["fwd_sum"] / max(1, totals["fwd_moves"])
     base["sacs_total"] = totals["sacs"]
+    # Per-own-move rates: game length varies with depth and opponent, so a
+    # per-game rise in checks can be nothing more than longer games.
+    own = max(1, totals["fwd_moves"])
+    for key, short in (("sacs", "sac"), ("checks", "check"),
+                       ("captures", "capture"), ("storms", "storm")):
+        base[short + "_pm"] = totals[key] / own
+    base["own_moves"] = totals["fwd_moves"]
     return base
 
 
@@ -353,6 +360,10 @@ def main():
               % (args.plies, segment["sacs"], segment["checks"],
                  segment["captures"], segment["storms"], segment["fwd"],
                  100.0 * segment["follow5"] / max(1, segment["sacs_total"])))
+        print("Tal per own move (%d moves): sacs=%.3f checks=%.3f "
+              "captures=%.3f storms=%.3f"
+              % (segment["own_moves"], segment["sac_pm"], segment["check_pm"],
+                 segment["capture_pm"], segment["storm_pm"]))
 
     totals = dict(sacs=0, checks=0, captures=0, storms=0, fwd_sum=0,
                   fwd_moves=0, follow3=0, follow5=0, liquidated=0, games=0)
@@ -380,15 +391,20 @@ def main():
                  m["min_shield"], m["end_mat"]))
 
     g = totals["games"]
+    own = max(1, totals["fwd_moves"])
     print("\nOpenTal (%d games): true sacs=%.2f/g checks=%.2f/g captures=%.2f/g "
           "storms=%.2f/g fwd=%.2f/own move, sac->check within3=%.0f%% "
           "within5=%.0f%%, attacker-liquidation=%.0f%%" %
           (g, totals["sacs"] / g, totals["checks"] / g,
            totals["captures"] / g, totals["storms"] / g,
-           totals["fwd_sum"] / max(1, totals["fwd_moves"]),
+           totals["fwd_sum"] / own,
            100.0 * totals["follow3"] / max(1, totals["sacs"]),
            100.0 * totals["follow5"] / max(1, totals["sacs"]),
            100.0 * totals["liquidated"] / max(1, totals["sacs"])))
+    print("OpenTal per own move (%d moves): sacs=%.3f checks=%.3f "
+          "captures=%.3f storms=%.3f" %
+          (own, totals["sacs"] / own, totals["checks"] / own,
+           totals["captures"] / own, totals["storms"] / own))
     print("Result is reported but NOT used to judge the engine - engines do "
           "not get rattled by sacrifices the way people do.")
     print("PGNs: %s" % args.out)
