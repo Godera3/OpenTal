@@ -301,7 +301,13 @@
   let lastAnalysis = null;
 
   function ensureHost() {
-    if (host && host.isConnected) return;
+    if (host && host.isConnected && shadow) return;
+    const existing = document.getElementById(HOST_ID);
+    if (existing && existing.shadowRoot) {
+      host = existing;
+      shadow = existing.shadowRoot;
+      return;
+    }
     host = document.createElement('div');
     host.id = HOST_ID;
     Object.assign(host.style, {
@@ -310,9 +316,10 @@
     });
     shadow = host.attachShadow({ mode: 'open' });
     shadow.innerHTML = MARKUP;
-    document.body.appendChild(host);
+    (document.body || document.documentElement).appendChild(host);
     bindControls();
     loadSettings();
+    place();
   }
 
   function $(id) { return shadow.getElementById(id); }
@@ -574,59 +581,66 @@
   }
 
   function draw(result) {
-    ensureHost();
-    window.OpenTalDebug = window.OpenTalDebug || {};
-    window.OpenTalDebug.lastResult = result;
-    window.OpenTalDebug.lastDrawAt = Date.now();
-    lastAnalysis = result || null;
-    clear();
+    try {
+      ensureHost();
+      window.OpenTalDebug = window.OpenTalDebug || {};
+      window.OpenTalDebug.lastResult = result;
+      window.OpenTalDebug.lastDrawAt = Date.now();
+      lastAnalysis = result || null;
+      clear();
 
-    const best = result && result.bestmove != null ? String(result.bestmove) : '';
-    const hasLines = result && Array.isArray(result.lines) && result.lines.length > 0;
-    const candidates = hasLines ? result.lines.slice(0, 3) : (best ? [{ move: best, score: result.score, mate: result.mate }] : []);
+      const best = result && result.bestmove != null ? String(result.bestmove) : '';
+      const hasLines = result && Array.isArray(result.lines) && result.lines.length > 0;
+      const candidates = hasLines ? result.lines.slice(0, 3) : (best ? [{ move: best, score: result.score, mate: result.mate }] : []);
 
-    if (!candidates.length || !/^([a-h][1-8])([a-h][1-8])/.test(candidates[0].move || best)) {
-      const shown = best ? best : '(empty)';
-      $('badge').textContent = 'TAL — NO MOVE [' + shown + ']';
+      const badge = $('badge');
+      if (!candidates.length || !/^([a-h][1-8])([a-h][1-8])/.test(candidates[0].move || best)) {
+        const shown = best ? best : '(empty)';
+        if (badge) badge.textContent = 'TAL — NO MOVE [' + shown + ']';
+        place();
+        schedulePlace();
+        return;
+      }
+
+      const arrows = $('arrows');
+      const lineBox = $('lines');
+      let drawn = 0;
+      // draw in reverse so PV1 is on top
+      for (let i = candidates.length - 1; i >= 0; i--) {
+        if (arrows && drawArrow(arrows, candidates[i].move, i + 1)) drawn++;
+      }
+      window.OpenTalDebug.lastDrawnArrows = drawn;
+
+      const top = candidates[0];
+      const isBook = top.score == null && top.mate == null;
+      let label = formatScore(top);
+      if (isBook) {
+        const opening = openingName(lastMoves, top.move);
+        label = opening ? ('book · ' + opening) : 'book';
+      }
+      const sideName = lastTurn === 'w' ? 'White' : (lastTurn === 'b' ? 'Black' : '');
+      const mine = (lastPlayer === 'w' || lastPlayer === 'b') && lastPlayer === lastTurn ? ' (you)' : '';
+      if (badge) badge.textContent = 'TAL ' + top.move + ' · ' + label + (sideName ? ' · ' + sideName + ' to move' + mine : '');
+
+      if (candidates.length > 1 && lineBox) {
+        candidates.forEach((line, index) => {
+          const chip = document.createElement('span');
+          chip.className = 'chip pv' + (index + 1);
+          chip.textContent = (index + 1) + '. ' + line.move + ' ' + formatScore(line);
+          lineBox.appendChild(chip);
+        });
+        lineBox.classList.remove('hidden');
+      }
+
+      setStatus(panelOpen ? 'Ready.' : ($('status') ? $('status').textContent : ''));
       place();
       schedulePlace();
-      return;
+      requestAnimationFrame(place);
+      setTimeout(place, 120);
+    } catch (e) {
+      console.log('[OpenTal] draw error', e);
+      try { if ($('badge')) $('badge').textContent = 'TAL — draw error'; } catch (e2) {}
     }
-
-    const arrows = $('arrows');
-    const lineBox = $('lines');
-    let drawn = 0;
-    // draw in reverse so PV1 is on top
-    for (let i = candidates.length - 1; i >= 0; i--) {
-      if (arrows && drawArrow(arrows, candidates[i].move, i + 1)) drawn++;
-    }
-    window.OpenTalDebug.lastDrawnArrows = drawn;
-
-    const top = candidates[0];
-    const isBook = top.score == null && top.mate == null;
-    let label = formatScore(top);
-    if (isBook) {
-      const opening = openingName(lastMoves, top.move);
-      label = opening ? ('book · ' + opening) : 'book';
-    }
-    const sideName = lastTurn === 'w' ? 'White' : (lastTurn === 'b' ? 'Black' : '');
-    const mine = (lastPlayer === 'w' || lastPlayer === 'b') && lastPlayer === lastTurn ? ' (you)' : '';
-    if ($('badge')) $('badge').textContent = 'TAL ' + top.move + ' · ' + label + (sideName ? ' · ' + sideName + ' to move' + mine : '');
-
-    if (candidates.length > 1 && lineBox) {
-      candidates.forEach((line, index) => {
-        const chip = document.createElement('span');
-        chip.className = 'chip pv' + (index + 1);
-        chip.textContent = (index + 1) + '. ' + line.move + ' ' + formatScore(line);
-        lineBox.appendChild(chip);
-      });
-      lineBox.classList.remove('hidden');
-    }
-
-    setStatus(panelOpen ? 'Ready.' : ($('status') ? $('status').textContent : ''));
-    place();
-    schedulePlace();
-    requestAnimationFrame(place);
   }
 
   function requestAnalysis(state) {
