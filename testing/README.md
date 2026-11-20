@@ -80,7 +80,8 @@ builds, so only changes that survive several levers are kept. Normalising to
 *own moves* rather than games changes the picture — Tal makes 0.106 checks and
 0.250 captures per own move from ply 16; OpenTal 0.107 and 0.164 — because
 games have different lengths. See `VERSION_HISTORY.md` for the rejected
-experiments.
+experiments, including four bounded sacrifice-lookahead variants in `search.cpp`
+that inflated checks and are not in the current build.
 
 The guardrail: do not tune to change the result column. Tune only when a style
 metric drifts away from Tal's row.

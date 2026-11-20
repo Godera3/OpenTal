@@ -299,3 +299,36 @@ is explicitly not supposed to make. Raising `W_FOREST` from 140 to 180/220 was
 tested as a sound alternative: it moved specimen agreement by at most one ply
 and destabilised the style metrics, so it was reverted. Agreement is 17/41
 plies; the remaining mismatches are sound opening choices, not missing Tal.
+
+## Bounded sacrifice lookahead: tried and rejected (2026-11-20)
+
+Tal's sacs create an attack the static eval cannot see: 80% of them happen
+with only 0–1 pieces already near the king, and 81% cost 100–500cp. Our sacs
+cost 900–1000cp in 35% of cases. The hypothesis was that a bounded lookahead
+past the forced reply would let search see the attack being bought. Four
+variants were threaded through `Search()` with a `sac_ply` marker, all PV-only
+and capped so the tree could not blow up. Sixteen depth-5 games against
+Stockfish from the same Tal positions:
+
+| Build | sacs/g | checks/g | storms/g | fwd/own | sac→check ≤3 | ≤5 |
+|---|---|---|---|---|---|---|
+| Tal, ply 16 | 1.91 | 3.53 | 1.84 | 0.82 | 53% | 92% |
+| Baseline `c044716` | 1.31 | 3.75 | 1.81 | 1.19 | 67% | 90% |
+| One ply on sac node | 1.62 | 5.12 | 1.31 | 1.08 | 58% | 73% |
+| One ply on capture sacs only | 1.38 | 6.06 | 1.06 | 1.10 | 64% | 82% |
+
+Two earlier twelve-game probes extended checking moves after a sac instead.
+The first had the parity wrong and extended the *opponent's* checks: sacs
+2.08/g, checks 4.75/g, storms 1.00/g, follow-up 12%/32%. Correcting it to our
+own checks at +2/+4 plies gave sacs 1.67/g, checks 5.42/g, storms 1.42/g,
+follow-up 45%/55%. Every form of the extension moved sacs and forward pieces
+toward Tal while pushing checks far above Tal's row and cutting pawn storms.
+Runtime rose from 5.8 s to 8–9 s for the same sixteen games. No variant beat
+the baseline overall, so `search.cpp` and `rodent.h` were restored from
+`c044716` and rebuilt.
+
+The conclusion is structural, not a weight: extending the search amplifies
+checking lines without teaching the eval what a sac *buys* (opened file,
+removed defender, exposed king). The next attempt has to value those
+consequences after the exchange settles; a search extension is the wrong
+instrument.
