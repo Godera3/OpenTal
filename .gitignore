@@ -31,3 +31,5 @@
 *.out
 *.app
 opental
+__pycache__/
+*.pyc
