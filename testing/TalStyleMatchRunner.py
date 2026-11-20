@@ -136,6 +136,15 @@ def material(board, color):
     return sum(VAL[t] * len(board.pieces(t, color)) for t in VAL)
 
 
+def advanced_pieces(board, color):
+    """Non-pawns that have crossed into the enemy half of the board."""
+    for pt in (chess.KNIGHT, chess.BISHOP, chess.ROOK, chess.QUEEN):
+        for sq in board.pieces(pt, color):
+            rank = chess.square_rank(sq)
+            if (rank if color else 7 - rank) >= 4:
+                yield sq
+
+
 def measure(fen, prefix, moves, color, result):
     """Style metrics from `color`'s point of view, ignoring the result."""
     board = chess.Board(fen)
@@ -143,7 +152,8 @@ def measure(fen, prefix, moves, color, result):
         board.push(uci)
     start = board.copy()
     op = not color
-    sacs = checks = captures = 0
+    sacs = checks = captures = storms = 0
+    fwd_sum = fwd_moves = 0
     follow3 = follow5 = 0
     liquidated = 0
     min_shield = 6
@@ -157,7 +167,15 @@ def measure(fen, prefix, moves, color, result):
             if victim is not None:
                 captures += 1
             mat_before = material(board, color)
+            if board.piece_type_at(move.from_square) == chess.PAWN:
+                rank = chess.square_rank(move.to_square)
+                rel = rank if color else 7 - rank
+                if (rel >= 4 and abs(chess.square_file(move.to_square) -
+                                     chess.square_file(board.king(not color))) <= 2):
+                    storms += 1
             board.push(move)
+            fwd_sum += sum(1 for _ in advanced_pieces(board, color))
+            fwd_moves += 1
             if board.is_check():
                 checks += 1
 
@@ -223,6 +241,7 @@ def measure(fen, prefix, moves, color, result):
     end_mat = material(board, color) - material(board, op)
     start_mat = material(start, color) - material(start, op)
     return dict(sacs=sacs, checks=checks, captures=captures,
+                storms=storms, fwd_sum=fwd_sum, fwd_moves=fwd_moves,
                 follow3=follow3, follow5=follow5,
                 liquidated=liquidated, min_shield=min_shield,
                 end_mat=end_mat, start_mat=start_mat,
@@ -247,10 +266,15 @@ def write_pgn(path, fen, prefix, moves, result, white_name, black_name, event):
         f.write(str(game) + "\n\n")
 
 
-def tal_baseline(pgn_path):
-    """Measure the real Tal games with the exact same yardstick."""
-    totals = dict(sacs=0, checks=0, follow3=0, follow5=0,
-                  liquidated=0, games=0)
+def tal_baseline(pgn_path, plies=None):
+    """Measure real Tal with the same yardstick.
+
+    With `plies` set, only the segment after that ply is measured. The engine
+    probes start at ply 16, so full-game numbers include quiet openings and
+    endgames the engine never sees; the segment row is the fair comparison.
+    """
+    totals = dict(sacs=0, checks=0, captures=0, storms=0, fwd_sum=0,
+                  fwd_moves=0, follow3=0, follow5=0, liquidated=0, games=0)
     with open(pgn_path, encoding="utf-8", errors="replace") as f:
         while True:
             game = chess.pgn.read_game(f)
@@ -261,20 +285,29 @@ def tal_baseline(pgn_path):
             if "Tal" not in w and "Tal" not in b:
                 continue
             color = chess.WHITE if "Tal" in w else chess.BLACK
-            moves = [m.uci() for m in game.mainline_moves()]
+            full = [m.uci() for m in game.mainline_moves()]
+            board = game.board()
+            if plies is not None:
+                for uci in full[:plies]:
+                    board.push_uci(uci)
+                moves = full[plies:]
+            else:
+                moves = full
             if not moves:
                 continue
-            m = measure(game.board().fen(), [], moves, color,
+            m = measure(board.fen(), [], moves, color,
                         game.headers.get("Result", "*"))
-            for key in ("sacs", "checks", "follow3", "follow5", "liquidated"):
-                totals[key] += m[key]
+            for key in totals:
+                if key in m:
+                    totals[key] += m[key]
             totals["games"] += 1
     n = totals["games"]
     if not n:
         return None
     base = dict(totals)
-    base["sacs"] = totals["sacs"] / n
-    base["checks"] = totals["checks"] / n
+    for key in ("sacs", "checks", "captures", "storms"):
+        base[key] = totals[key] / n
+    base["fwd"] = totals["fwd_sum"] / max(1, totals["fwd_moves"])
     base["sacs_total"] = totals["sacs"]
     return base
 
@@ -307,16 +340,22 @@ def main():
     print("OpenTal 2.0 vs %s | depth %d | %d games/side | Tal positions at ply %d"
           % (opp_name, args.depth, args.games, args.plies))
     baseline = tal_baseline(args.pgn)
+    segment = tal_baseline(args.pgn, args.plies)
     if baseline:
-        print("Tal real games: %.2f true sacs/g %.2f checks/g, sac->check "
-              "within3=%.0f%% within5=%.0f%%, attacker-liquidation=%.0f%%"
-              % (baseline["sacs"], baseline["checks"],
-                 100.0 * baseline["follow3"] / max(1, baseline["sacs_total"]),
-                 100.0 * baseline["follow5"] / max(1, baseline["sacs_total"]),
-                 100.0 * baseline["liquidated"] / max(1, baseline["sacs_total"])))
+        print("Tal full games: %.2f true sacs/g %.2f checks/g "
+              "%.2f captures/g %.2f storms/g %.2f fwd/own move"
+              % (baseline["sacs"], baseline["checks"], baseline["captures"],
+                 baseline["storms"], baseline["fwd"]))
+    if segment:
+        print("Tal from ply %d (phase-matched): %.2f true sacs/g %.2f checks/g "
+              "%.2f captures/g %.2f storms/g %.2f fwd/own move, "
+              "sac->check within5=%.0f%%"
+              % (args.plies, segment["sacs"], segment["checks"],
+                 segment["captures"], segment["storms"], segment["fwd"],
+                 100.0 * segment["follow5"] / max(1, segment["sacs_total"])))
 
-    totals = dict(sacs=0, checks=0, captures=0, follow3=0, follow5=0,
-                  liquidated=0, games=0)
+    totals = dict(sacs=0, checks=0, captures=0, storms=0, fwd_sum=0,
+                  fwd_moves=0, follow3=0, follow5=0, liquidated=0, games=0)
     for n in range(args.games * 2):
         fen, prefix, wname, bname = positions[n]
         tal_white = (n % 2 == 0)
@@ -342,10 +381,11 @@ def main():
 
     g = totals["games"]
     print("\nOpenTal (%d games): true sacs=%.2f/g checks=%.2f/g captures=%.2f/g "
-          "sac->check within3=%.0f%% within5=%.0f%%, "
-          "attacker-liquidation=%.0f%%" %
+          "storms=%.2f/g fwd=%.2f/own move, sac->check within3=%.0f%% "
+          "within5=%.0f%%, attacker-liquidation=%.0f%%" %
           (g, totals["sacs"] / g, totals["checks"] / g,
-           totals["captures"] / g,
+           totals["captures"] / g, totals["storms"] / g,
+           totals["fwd_sum"] / max(1, totals["fwd_moves"]),
            100.0 * totals["follow3"] / max(1, totals["sacs"]),
            100.0 * totals["follow5"] / max(1, totals["sacs"]),
            100.0 * totals["liquidated"] / max(1, totals["sacs"])))
