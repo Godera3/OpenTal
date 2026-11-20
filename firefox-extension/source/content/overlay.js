@@ -94,12 +94,11 @@
       }
       .toggle input { accent-color: #ffd166; margin: 0; }
       .actions { display: flex; gap: 8px; align-items: center; }
-      .save, .ghost {
+      .ghost {
         border-radius: 10px; padding: 8px 10px; cursor: pointer;
         font: 700 12px/1 system-ui, sans-serif; border: 1px solid rgba(255,209,102,0.25);
+        background: transparent; color: #ffd166; flex: 1;
       }
-      .save { background: #ffd166; color: #141218; flex: 1; }
-      .ghost { background: transparent; color: #ffd166; }
       .status { margin-top: 8px; min-height: 14px; font: 500 11px/1.3 system-ui, sans-serif; color: rgba(243,239,230,0.7); }
     </style>
     <div class="wrap">
@@ -120,7 +119,7 @@
       </div>
       <div class="panel hidden" id="panel">
         <div class="title">OpenTal</div>
-        <div class="sub">Tal-style analysis on this board. Bot games and puzzles only.</div>
+        <div class="sub">Tal-style analysis on this board. Settings auto-save.</div>
 
         <div class="row">
           <div class="row-head"><span class="label">Search</span><span class="value" id="modeVal"></span></div>
@@ -158,8 +157,7 @@
         </div>
 
         <div class="actions">
-          <button class="save" id="save">Save & apply</button>
-          <button class="ghost" id="reset" title="Reset defaults">Reset</button>
+          <button class="ghost" id="reset" title="Reset defaults">Reset defaults</button>
         </div>
         <div class="status" id="status"></div>
       </div>
@@ -171,6 +169,9 @@
   let revision = -1;
   let settings = Object.assign({}, DEFAULT_SETTINGS);
   let panelOpen = false;
+  let saveTimer = null;
+  let saveVersion = 0;
+  let outsideBound = false;
 
   function ensureHost() {
     if (host && host.isConnected) return;
@@ -232,44 +233,80 @@
     };
   }
 
+  function closePanel() {
+    panelOpen = false;
+    if (shadow) $('panel').classList.add('hidden');
+  }
+
+  function queueAutoSave(patch = null, delay = 350) {
+    settings = Object.assign({}, readForm(), patch || {});
+    syncForm();
+    if (saveTimer) clearTimeout(saveTimer);
+    setStatus('Saving…');
+    saveTimer = setTimeout(() => {
+      saveTimer = null;
+      void persistSettings();
+    }, delay);
+  }
+
+  async function persistSettings() {
+    const version = ++saveVersion;
+    const next = Object.assign({}, readForm());
+    settings = next;
+    try {
+      const response = await browser.runtime.sendMessage({ type: 'saveSettings', settings: next });
+      if (version !== saveVersion) return;
+      if (response && response.settings) settings = response.settings;
+      syncForm();
+      setStatus('Saved. Re-analysing…');
+      requestAnalysis(window.OpenTalBoard.current());
+    } catch (error) {
+      if (version !== saveVersion) return;
+      setStatus('Could not save settings.');
+    }
+  }
+
   function bindControls() {
     $('gear').addEventListener('click', (event) => {
       event.stopPropagation();
       panelOpen = !panelOpen;
       $('panel').classList.toggle('hidden', !panelOpen);
+      if (!panelOpen) setStatus('');
     });
+
     $('modeTime').addEventListener('click', () => {
-      settings = Object.assign({}, settings, readForm(), { searchMode: 'time' });
-      syncForm();
+      queueAutoSave({ searchMode: 'time' }, 0);
     });
     $('modeDepth').addEventListener('click', () => {
-      settings = Object.assign({}, settings, readForm(), { searchMode: 'depth' });
-      syncForm();
+      queueAutoSave({ searchMode: 'depth' }, 0);
     });
+
     ['movetime', 'depth', 'hash', 'threads', 'multiPv'].forEach((id) => {
-      $(id).addEventListener('input', () => {
-        settings = Object.assign({}, settings, readForm());
-        syncForm();
-      });
+      $(id).addEventListener('input', () => queueAutoSave(null, 400));
+      $(id).addEventListener('change', () => queueAutoSave(null, 0));
     });
-    $('save').addEventListener('click', async () => {
-      settings = readForm();
-      setStatus('Applying…');
-      try {
-        const response = await browser.runtime.sendMessage({ type: 'saveSettings', settings });
-        if (response && response.settings) settings = response.settings;
-        syncForm();
-        setStatus('Saved. Re-analysing…');
-        requestAnalysis(window.OpenTalBoard.current());
-      } catch (error) {
-        setStatus('Could not save settings.');
-      }
+
+    ['useBook', 'talMode', 'talRandom', 'ponder'].forEach((id) => {
+      $(id).addEventListener('change', () => queueAutoSave(null, 0));
     });
+
     $('reset').addEventListener('click', () => {
       settings = Object.assign({}, DEFAULT_SETTINGS);
       syncForm();
-      setStatus('Defaults restored (not saved yet).');
+      queueAutoSave(null, 0);
     });
+
+    if (!outsideBound) {
+      document.addEventListener('pointerdown', (event) => {
+        if (!panelOpen || !shadow || !host || !host.isConnected) return;
+        const path = event.composedPath ? event.composedPath() : [];
+        const panel = $('panel');
+        const gear = $('gear');
+        if ((panel && path.includes(panel)) || (gear && path.includes(gear))) return;
+        closePanel();
+      }, true);
+      outsideBound = true;
+    }
   }
 
   async function loadSettings() {
