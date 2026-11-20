@@ -20,15 +20,21 @@
       :host { all: initial; }
       .wrap { position: absolute; inset: 0; font-family: "Inter", "Segoe UI", system-ui, sans-serif; }
       svg.board { display: block; width: 100%; height: 100%; overflow: visible; }
-      #arrow { stroke: #ffd166; stroke-width: 0.13; stroke-linecap: round; opacity: 0.92; filter: drop-shadow(0 0 0.08px rgba(0,0,0,0.6)); }
-      #arrow.hidden, .square.hidden { display: none; }
-      .square { fill: #ffd166; opacity: 0.22; }
+      .pv-arrow { stroke-linecap: round; filter: drop-shadow(0 0 0.08px rgba(0,0,0,0.6)); }
+      .pv1 { stroke: #ffd166; stroke-width: 0.14; opacity: 0.95; }
+      .pv2 { stroke: #7dd3fc; stroke-width: 0.11; opacity: 0.78; }
+      .pv3 { stroke: #c4b5fd; stroke-width: 0.11; opacity: 0.78; }
+      .sq { opacity: 0.2; }
+      .sq.pv1 { fill: #ffd166; }
+      .sq.pv2 { fill: #7dd3fc; opacity: 0.14; }
+      .sq.pv3 { fill: #c4b5fd; opacity: 0.14; }
       .topbar {
         position: absolute; top: 6px; left: 6px; right: 6px;
-        display: flex; align-items: center; justify-content: space-between; gap: 8px;
+        display: flex; align-items: flex-start; justify-content: space-between; gap: 8px;
         pointer-events: none;
       }
-      .badge, .gear {
+      .left { display: flex; flex-direction: column; gap: 4px; max-width: calc(100% - 44px); }
+      .badge, .gear, .chip {
         pointer-events: auto;
         border: 1px solid rgba(255, 209, 102, 0.28);
         background: rgba(10, 10, 14, 0.78);
@@ -40,10 +46,19 @@
       .badge {
         padding: 5px 10px; border-radius: 999px;
         font: 600 12px/1.2 system-ui, sans-serif; letter-spacing: 0.02em;
-        white-space: nowrap; max-width: calc(100% - 44px); overflow: hidden; text-overflow: ellipsis;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
       }
+      .lines { display: flex; flex-wrap: wrap; gap: 4px; pointer-events: none; }
+      .lines.hidden { display: none; }
+      .chip {
+        padding: 3px 8px; border-radius: 999px;
+        font: 600 11px/1.2 ui-monospace, SFMono-Regular, monospace;
+      }
+      .chip.pv1 { border-color: rgba(255,209,102,0.35); color: #ffd166; }
+      .chip.pv2 { border-color: rgba(125,211,252,0.35); color: #7dd3fc; }
+      .chip.pv3 { border-color: rgba(196,181,253,0.35); color: #c4b5fd; }
       .gear {
-        width: 30px; height: 30px; border-radius: 10px; cursor: pointer;
+        width: 30px; height: 30px; border-radius: 10px; cursor: pointer; flex: 0 0 auto;
         display: grid; place-items: center; font-size: 15px; transition: transform .15s ease, background .15s ease;
       }
       .gear:hover { background: rgba(255, 209, 102, 0.12); transform: rotate(20deg); }
@@ -63,9 +78,7 @@
       .row-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 5px; }
       .label { font: 600 12px/1.2 system-ui, sans-serif; color: #f3efe6; }
       .value { font: 600 11px/1.2 ui-monospace, SFMono-Regular, monospace; color: #ffd166; }
-      input[type=range] {
-        width: 100%; accent-color: #ffd166; cursor: pointer; height: 4px;
-      }
+      input[type=range] { width: 100%; accent-color: #ffd166; cursor: pointer; height: 4px; }
       .mode-switch { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
       .mode-btn {
         border-radius: 10px; padding: 7px 8px; cursor: pointer;
@@ -96,16 +109,18 @@
     <div class="wrap">
       <svg class="board" viewBox="0 0 8 8" preserveAspectRatio="none">
         <defs>
-          <marker id="tal-head" viewBox="0 0 3 3" markerWidth="3" markerHeight="3"
-                  refX="2.2" refY="1.5" orient="auto">
-            <path d="M0,0 L3,1.5 L0,3 Z" fill="#ffd166"></path>
-          </marker>
+          <marker id="head-pv1" viewBox="0 0 3 3" markerWidth="3" markerHeight="3" refX="2.2" refY="1.5" orient="auto"><path d="M0,0 L3,1.5 L0,3 Z" fill="#ffd166"></path></marker>
+          <marker id="head-pv2" viewBox="0 0 3 3" markerWidth="3" markerHeight="3" refX="2.2" refY="1.5" orient="auto"><path d="M0,0 L3,1.5 L0,3 Z" fill="#7dd3fc"></path></marker>
+          <marker id="head-pv3" viewBox="0 0 3 3" markerWidth="3" markerHeight="3" refX="2.2" refY="1.5" orient="auto"><path d="M0,0 L3,1.5 L0,3 Z" fill="#c4b5fd"></path></marker>
         </defs>
-        <g id="hits"><rect class="square hidden" id="from"></rect><rect class="square hidden" id="to"></rect></g>
-        <line id="arrow" class="hidden" marker-end="url(#tal-head)"></line>
+        <g id="hits"></g>
+        <g id="arrows"></g>
       </svg>
       <div class="topbar">
-        <div class="badge" id="badge">TAL …</div>
+        <div class="left">
+          <div class="badge" id="badge">TAL …</div>
+          <div class="lines hidden" id="lines"></div>
+        </div>
         <button class="gear" id="gear" title="OpenTal settings">⚙</button>
       </div>
       <div class="panel hidden" id="panel">
@@ -291,60 +306,99 @@
       : { x: file + 0.5, y: 7 - rank + 0.5 };
   }
 
-  function clear() {
-    if (!shadow) return;
-    $('arrow').classList.add('hidden');
-    shadow.querySelectorAll('.square').forEach((rect) => rect.classList.add('hidden'));
+  function formatScore(line) {
+    if (!line) return '';
+    if (line.mate != null) return 'M' + Math.abs(line.mate);
+    if (line.score != null) return (line.score >= 0 ? '+' : '') + (line.score / 100).toFixed(2);
+    return 'book';
   }
 
-  function draw(result) {
-    ensureHost();
-    window.OpenTalDebug = window.OpenTalDebug || {};
-    window.OpenTalDebug.lastResult = result;
-    const best = result && result.bestmove != null ? String(result.bestmove) : '';
-    const match = /^([a-h][1-8])([a-h][1-8])([qrbn])?$/.exec(best);
-    clear();
-    if (!match) {
-      const shown = best ? best : '(empty)';
-      $('badge').textContent = 'TAL — NO MOVE [' + shown + ']';
-      return;
-    }
+  function clear() {
+    if (!shadow) return;
+    const arrows = $('arrows');
+    const hits = $('hits');
+    const lines = $('lines');
+    if (arrows) arrows.innerHTML = '';
+    if (hits) hits.innerHTML = '';
+    if (lines) { lines.innerHTML = ''; lines.classList.add('hidden'); }
+  }
 
+  function drawArrow(svgGroup, hitGroup, move, rank) {
+    const match = /^([a-h][1-8])([a-h][1-8])([qrbn])?$/.exec(move || '');
+    if (!match) return false;
+    const cls = 'pv' + rank;
     const from = squareCentre(match[1]);
     const to = squareCentre(match[2]);
     const dx = to.x - from.x;
     const dy = to.y - from.y;
     const length = Math.hypot(dx, dy) || 1;
     const tip = { x: to.x - (0.28 * dx) / length, y: to.y - (0.28 * dy) / length };
+    const ns = 'http://www.w3.org/2000/svg';
 
-    const line = $('arrow');
-    line.setAttribute('x1', from.x);
-    line.setAttribute('y1', from.y);
-    line.setAttribute('x2', tip.x);
-    line.setAttribute('y2', tip.y);
-    line.classList.remove('hidden');
-
-    const fromRect = $('from');
+    const fromRect = document.createElementNS(ns, 'rect');
+    fromRect.setAttribute('class', 'sq ' + cls);
     fromRect.setAttribute('x', Math.floor(from.x));
     fromRect.setAttribute('y', Math.floor(from.y));
     fromRect.setAttribute('width', 1);
     fromRect.setAttribute('height', 1);
-    fromRect.classList.remove('hidden');
+    hitGroup.appendChild(fromRect);
 
-    const toRect = $('to');
+    const toRect = document.createElementNS(ns, 'rect');
+    toRect.setAttribute('class', 'sq ' + cls);
     toRect.setAttribute('x', Math.floor(to.x));
     toRect.setAttribute('y', Math.floor(to.y));
     toRect.setAttribute('width', 1);
     toRect.setAttribute('height', 1);
-    toRect.classList.remove('hidden');
+    hitGroup.appendChild(toRect);
 
-    const label = (result.lines && result.lines[0] && result.lines[0].move) || match[0];
-    const score = result.mate != null
-      ? 'M' + Math.abs(result.mate)
-      : result.score != null
-        ? (result.score >= 0 ? '+' : '') + (result.score / 100).toFixed(2)
-        : 'book';
-    $('badge').textContent = 'TAL ' + label + ' · ' + score;
+    const line = document.createElementNS(ns, 'line');
+    line.setAttribute('class', 'pv-arrow ' + cls);
+    line.setAttribute('x1', from.x);
+    line.setAttribute('y1', from.y);
+    line.setAttribute('x2', tip.x);
+    line.setAttribute('y2', tip.y);
+    line.setAttribute('marker-end', 'url(#head-' + cls + ')');
+    svgGroup.appendChild(line);
+    return true;
+  }
+
+  function draw(result) {
+    ensureHost();
+    window.OpenTalDebug = window.OpenTalDebug || {};
+    window.OpenTalDebug.lastResult = result;
+    clear();
+    const best = result && result.bestmove != null ? String(result.bestmove) : '';
+    const hasLines = result && Array.isArray(result.lines) && result.lines.length > 0;
+    const candidates = hasLines ? result.lines.slice(0, 3) : (best ? [{ move: best, score: result.score, mate: result.mate }] : []);
+
+    if (!candidates.length || !/^([a-h][1-8])([a-h][1-8])/.test(candidates[0].move || best)) {
+      const shown = best ? best : '(empty)';
+      $('badge').textContent = 'TAL — NO MOVE [' + shown + ']';
+      place();
+      return;
+    }
+
+    const arrows = $('arrows');
+    const hits = $('hits');
+    const lineBox = $('lines');
+    // draw in reverse so PV1 is on top
+    for (let i = candidates.length - 1; i >= 0; i--) {
+      drawArrow(arrows, hits, candidates[i].move, i + 1);
+    }
+
+    const top = candidates[0];
+    $('badge').textContent = 'TAL ' + top.move + ' · ' + formatScore(top);
+
+    if (candidates.length > 1) {
+      candidates.forEach((line, index) => {
+        const chip = document.createElement('span');
+        chip.className = 'chip pv' + (index + 1);
+        chip.textContent = (index + 1) + '. ' + line.move + ' ' + formatScore(line);
+        lineBox.appendChild(chip);
+      });
+      lineBox.classList.remove('hidden');
+    }
+
     setStatus(panelOpen ? 'Ready.' : $('status').textContent);
     place();
   }
