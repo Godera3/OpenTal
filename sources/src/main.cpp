@@ -36,7 +36,7 @@ sInternalBook InternalBook;
 
 void PrintVersion() {
 
-    printf("id name OpenTal 1.1 - Pure Mikhail Tal Edition"
+    printf("id name OpenTal 2.0 - Tal Style Edition"
 
 #ifdef DEBUG
 #if !(defined(_WIN64) || defined(__x86_64__))

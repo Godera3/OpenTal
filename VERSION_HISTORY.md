@@ -44,21 +44,66 @@ This version attacks only when the attack is provably sound. It does not seek
 material imbalance for its own sake and it does not deliberately enter chaotic
 positions. Those are the traits v2 is meant to add. Strength is not the goal.
 
-## v2 "Tal style" — planned, not started
+## Book verification
 
-Work happens on branch `v2-tal-style`, and begins only after `books/ph-tal2.bin`
-is verified to contain Mikhail Tal's games.
+Before any engine change, `books/ph-tal2.bin` was confirmed to be built from
+Tal's games. Polyglot books carry no names, so verification was statistical: 89
+real Tal games and 60 Fischer games (control) were replayed, and for every
+position the actual played move was looked up in both `ph-tal2.bin` and the
+stock `rodent.bin`.
 
-Order of work:
+- Tal moves found in `ph-tal2.bin`: 95.3%, followed to an average of 26.8 plies.
+- Tal moves in `rodent.bin`: 83.9%, only 10.8 plies deep.
+- Fischer moves: the advantage reverses — `rodent.bin` 87.8% / 12.2 plies vs
+  `ph-tal2.bin` 83.3% / 9.7 plies.
 
-1. Verify the opening book is genuinely Tal's games.
-2. Replace the scattered sacrifice bonuses with one bounded "initiative" score,
-   so material can be subordinated to attack without hallucinated evaluations.
-3. Make search sacrifice-aware: exempt sacrifice moves from futility, LMR and
-   null-move pruning so the attack lines actually get searched.
-4. Add a complexity / "forest" term that seeks messy, tactical positions.
-5. Add an unpredictability option: prefer attacking moves among near-equal best
-   moves.
+The book really is Tal's, to roughly 13 full moves deep. Full method and table
+in `PH-TAL2-BOOK-VERIFICATION.md`.
 
-Success is measured by style — sacrifices, checks, exposed enemy kings, decisive
-games and opening variety — not by Elo.
+## v2.0 "Tal Style Edition" — current engine
+
+Branch `v2-tal-style`. This is the `opental` binary; v1.1 remains frozen as
+`opental-v1`, on `main`, and at tag `v1.1-baseline`.
+
+Where v1 attacked only when the attack was provably sound, v2 is built to
+subordinate material to the attack and to seek chaos. Five changes:
+
+1. **One bounded initiative score** (`eval.cpp`, `W_INITIATIVE` = 500). The old
+   stack of small sacrifice bonuses is gone. A material deficit now earns back
+   up to 500 cp, scaled by a saturated king-attack measure and the number of
+   pieces near the enemy king, and only while the attacker still has a queen.
+   The score is hard-capped, so the 1500 cp hallucinations that forced the old
+   code to be deleted cannot recur.
+2. **A "forest" term** (`eval.cpp`, `W_FOREST` = 140). Rewards mutual tension
+   (own attacks landing on enemy pieces) and an exposed enemy king. This is the
+   style fingerprint — a preference for messy, tactical positions — and is
+   capped independently.
+3. **Sacrifice-aware search** (`search.cpp`). Moves that drop material — giving
+   away a piece, or moving a non-pawn to a square the enemy attacks — are tagged
+   and exempted from futility pruning, both late-move reductions and the bad-
+   capture reduction. Null-move reduction is shallower and its verification
+   search is deferred, so sacrificial lines survive long enough for the attack
+   to be seen. (An explicit sacrifice extension was tried and removed: it
+   stacked with check/recapture extensions and blew up the tree. The pruning
+   exemptions alone are enough.)
+4. **Root aggression bias** (`search.cpp`). Checks and captures are preferred
+   among near-equal moves, so Tal-style forcing lines get the nod over passive
+   ones.
+5. **`TalRandom` option** (`uci_options.cpp`, default false). When on, the
+   aggression bias is widened and a small bounded random jitter is added to root
+   move selection, so the engine is not deterministic — the unpredictability
+   that made Tal hard to prepare for. It is off by default for reproducibility.
+
+The engine now identifies itself as `id name OpenTal 2.0 - Tal Style Edition`,
+so the two binaries are distinguishable at the UCI handshake.
+
+### Measured behavior
+
+Builds cleanly; UCI handshake is clean (one `id name`, Hash 128 MB, `TalMode`
+always on, new `TalRandom` toggle). In a 6-game self-play series against the
+frozen v1, v2 delivered 57 checks to v1's 3 — it consistently drags the king
+into the open. Results were draws/cutoffs, not wins: strength was never the
+target.
+
+Success is style — sacrifices, checks, exposed enemy kings, decisive games,
+opening variety — not Elo.

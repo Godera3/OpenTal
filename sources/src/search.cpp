@@ -235,6 +235,7 @@ int cEngine::SearchRoot(POS *p, int ply, int alpha, int beta, int depth, int *pv
 	int quiet_tried = 0;
 	int mv_hist_score = 0;
 	int best_aggr = 0;
+	int best_jitter = 0;
 	MOVES m[1];
 	UNDO u[1];
 	eData e;
@@ -312,10 +313,11 @@ int cEngine::SearchRoot(POS *p, int ply, int alpha, int beta, int depth, int *pv
 
 		if (Glob.MoveToAvoid(move)) { p->UndoMove(move, u); continue; }
 
-		// TAL: Aggression bonus for root move selection
+		// TAL: root preference for checks and captures; TalRandom widens it
 		int aggr = 0;
-		if (p->InCheck()) aggr = 8;
-		else if (victim != NO_TP) aggr = 4;
+		if (p->InCheck()) aggr = Par.tal_random ? 14 : 8;
+		else if (victim != NO_TP) aggr = Par.tal_random ? 8 : 4;
+		int jitter = (Par.tal_random && !ply) ? (rand() % 12) : 0;
 
 		// GATHER INFO ABOUT THE MOVE
 
@@ -429,9 +431,10 @@ int cEngine::SearchRoot(POS *p, int ply, int alpha, int beta, int depth, int *pv
 
 		// NEW BEST MOVE (with aggression bias - prefer checks/captures when close)
 
-		if (score + aggr > best + best_aggr) {
+		if (score + aggr + jitter > best + best_aggr + best_jitter) {
 			best = score;
 			best_aggr = aggr;
+			best_jitter = jitter;
 			if (score > alpha) {
 				alpha = score;
 				BuildPv(pv, new_pv, move);
@@ -578,10 +581,9 @@ int cEngine::Search(POS *p, int ply, int alpha, int beta, int depth, bool was_nu
 
 		did_null = true;
 
-		// null move depth reduction - modified Stockfish formula
-
-		new_depth = depth - ((823 + 67 * depth) / 256)
-			- Min(3, (eval - beta) / 200);
+		// V2: shallower null-move reduction keeps tactical compensation alive.
+		new_depth = depth - ((700 + 67 * depth) / 256)
+			- Min(2, (eval - beta) / 300);
 
 		// omit null move search if normal search to the same depth wouldn't exceed beta
 		// (sometimes we can check it for free via hash table)
@@ -611,7 +613,7 @@ int cEngine::Search(POS *p, int ply, int alpha, int beta, int depth, bool was_nu
 
 			// verification search
 
-			if (new_depth > 6)
+			if (new_depth > 8)
 				score = Search(p, ply, alpha, beta, new_depth - 5, true, last_move, last_capt_sq, pv);
 
 			if (Glob.abort_search && mRootDepth > 1) return 0;
@@ -673,6 +675,18 @@ avoid_null:
 		victim = p->TpOnSq(Tsq(move));
 		if (victim != NO_TP) last_capt = Tsq(move);
 		else last_capt = -1;
+
+		// V2: every standard reduction deletes sacrifices before the attack
+		// behind them can be seen. Tag them here so the rules below skip them.
+		bool fl_sac = false;
+		if (victim != NO_TP) {
+			fl_sac = tp_value[p->TpOnSq(Fsq(move))] > tp_value[victim] + 50;
+		} else {
+			int attacker_tp = p->TpOnSq(Fsq(move));
+			if (attacker_tp != P && attacker_tp != K
+				&& p->IsAttacked(Tsq(move), ~p->mSide)) fl_sac = true;
+		}
+
 		p->DoMove(move, u);
 		if (p->Illegal()) { p->UndoMove(move, u); continue; }
 
@@ -724,7 +738,8 @@ avoid_null:
 			&& !p->InCheck()
 			&& mv_hist_score < Par.hist_limit
 			&& (mv_type == MV_NORMAL)
-			&& mv_tried > 1) {
+			&& mv_tried > 1
+			&& !fl_sac) {
 			p->UndoMove(move, u); continue;
 		}
 
@@ -759,7 +774,8 @@ avoid_null:
 			&& msLmrSize[is_pv][depth][mv_tried] > 0
 			&& mv_type == MV_NORMAL
 			&& mv_hist_score < Par.hist_limit
-			&& MoveType(move) != CASTLE) {
+			&& MoveType(move) != CASTLE
+			&& !fl_sac) {
 
 		// read reduction amount from the table
 
@@ -786,7 +802,8 @@ avoid_null:
 			&& !fl_check
 			&& !p->InCheck()
 			&& (mv_type == MV_BADCAPT)
-			&& !is_pv) {
+			&& !is_pv
+			&& !fl_sac) {
 			reduction = 1;
 			new_depth -= reduction;
 		}

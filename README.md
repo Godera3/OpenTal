@@ -1,4 +1,8 @@
-# OpenTal 1.1 - Pure Mikhail Tal Edition
+# OpenTal 2.0 - Tal Style Edition
+
+> The current build is v2.0. The original v1.1 "Pure Mikhail Tal Edition" is
+> kept intact as `opental-v1`, on branch `main` and at tag `v1.1-baseline`.
+> See `VERSION_HISTORY.md` for what changed and why.
 
 ## Attribution
 
@@ -26,7 +30,8 @@ OpenTal is a UCI-compatible chess engine that plays in the style of Mikhail Tal,
 3. **Engine → Install New Engine**
 4. **Browse** to `opental` executable
 5. **Set Parameters** (optional):
-   - `TalMode`: true (default) - Pure Tal style
+   - `TalMode`: true (default) - Pure Tal style (always ON)
+   - `TalRandom`: false (default) - Unpredictable, non-deterministic play
    - `UseBook`: true (default) - Uses Tal's opening book
    - `Threads`: 1-8 (default 1)
    - `Hash`: 16-4096 MB (default 128)
@@ -56,6 +61,7 @@ This engine embodies Mikhail Tal's famous style:
 | Option | Default | Description |
 |--------|---------|-------------|
 | `TalMode` | true | Pure Mikhail Tal style (always ON in this edition) |
+| `TalRandom` | false | Widen attacking preference and add bounded random jitter to root moves (unpredictable play) |
 | `UseBook` | true | Use Tal's opening book (`ph-tal2.bin`) |
 | `Hash` | 128 | Hash table size in MB |
 | `Threads` | 1 | Number of search threads |

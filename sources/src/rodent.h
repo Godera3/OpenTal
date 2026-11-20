@@ -373,6 +373,7 @@ class POS {
 
     bool InCheck() const { return Attacked(KingSq(mSide), ~mSide); }
     bool Illegal() const { return Attacked(KingSq(~mSide), mSide); }
+    bool IsAttacked(int sq, eColor sd) const { return Attacked(sq, sd); }
 
     void DoMove(int move, UNDO *u = nullptr);
     void DoNull(UNDO *u);
@@ -475,7 +476,7 @@ enum Values {
     RS2_MG, RS2_EG, QSR_MG, QSR_EG, R_BLOCK_MG, R_BLOCK_EG,                             // queen and rook bonuses
     W_MATERIAL, W_PST, W_OWN_ATT, W_OPP_ATT, W_OWN_MOB, W_OPP_MOB, W_THREATS,           // weights part 1
     W_TROPISM, W_FWD, W_PASSERS, W_SHIELD, W_STORM, W_MASS, W_CHAINS, W_STRUCT,         // weights part 2
-    W_LINES, W_OUTPOSTS, W_CENTER,
+    W_LINES, W_OUTPOSTS, W_CENTER, W_INITIATIVE, W_FOREST,
     NMG0, NMG1, NMG2, NMG3, NMG4, NMG5, NMG6, NMG7, NMG8,
     NEG0, NEG1, NEG2, NEG3, NEG4, NEG5, NEG6, NEG7, NEG8,
     BMG0, BMG1, BMG2, BMG3, BMG4, BMG5, BMG6, BMG7, BMG8, BMG9, BMG10, BMG11, BMG12, BMG13,
@@ -507,7 +508,7 @@ const char* const paramNames[N_OF_VAL] = {
     "RS2_MG", "RS2_EG", "QSR_MG", "QSR_EG", "R_BLOCK_MG",  "R_BLOCK_EG",                                    // queen and rook bonuses
     "Material", "W_PST", "OwnAttack", "OppAttack", "OwnMobility", "OppMobility", "PiecePressure", // weights part 1
     "KingTropism", "Forwardness", "PassedPawns", "PawnShield", "PawnStorm", "W_MASS", "W_CHAINS", "PawnStructure", // weights part 2
-    "Lines", "Outposts", "W_CENTER",
+    "Lines", "Outposts", "W_CENTER", "Initiative", "Forest",
     "NMG0", "NMG1", "NMG2", "NMG3", "NMG4", "NMG5", "NMG6", "NMG7", "NMG8",
     "NEG0", "NEG1", "NEG2", "NEG3", "NEG4", "NEG5", "NEG6", "NEG7", "NEG8",
     "BMG0", "BMG1", "BMG2", "BMG3", "BMG4", "BMG5", "BMG6", "BMG7", "BMG8", "BMG9", "BMG10", "BMG11", "BMG12", "BMG13",
@@ -526,6 +527,7 @@ class cParam {
     bool use_ponder; // this option does nothing
     bool use_book;
     bool verbose_book;
+    bool tal_random;
     int book_filter;
     int book_depth;
     int elo;

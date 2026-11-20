@@ -45,6 +45,7 @@ void PrintUciOptions() {
     printf("option name TimeBuffer type spin default %d min 0 max 1000\n", Glob.time_buffer);
 
     printf("option name TalMode type check default true\n");  // Pure Tal Mode always on
+    printf("option name TalRandom type check default false\n");
 }
 
 static void valuebool(bool& param, char *val) {
@@ -151,5 +152,8 @@ void ParseSetoption(const char *ptr) {
         // Any value, including false, leaves the Tal evaluation active.
         Par.InitTalStyle();
         printf("info string Tal Mode ON - Pure Mikhail Tal style!\n");
+    } else if (strcmp(name, "talrandom") == 0)                              {
+        valuebool(Par.tal_random, value);
+        printf("info string Tal Random %s\n", Par.tal_random ? "ON" : "OFF");
     }
 }

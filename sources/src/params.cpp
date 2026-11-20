@@ -43,6 +43,7 @@ void cParam::DefaultWeights() {  // tuned automatically
 
     book_depth = 256;
     book_filter = 20;
+    tal_random = false;
 
     // Timing
 
@@ -160,6 +161,8 @@ void cParam::DefaultWeights() {  // tuned automatically
     SetVal(W_SHIELD,  189, 0, 500, tuneWeights);
     SetVal(W_STORM,   191, 0, 500, tuneWeights);
     SetVal(W_CENTER,   50, 0, 500, tuneWeights);
+    SetVal(W_INITIATIVE, 0, 0, 500, tuneWeights);
+    SetVal(W_FOREST,     0, 0, 500, tuneWeights);
 
     // Pawn structure parameters
 
@@ -537,6 +540,8 @@ void cParam::InitialPersonalityWeights() { // tuned manually for good experience
     values[W_SHIELD] = 119;
     values[W_STORM] = 99;
     values[W_CENTER] = 50;
+    values[W_INITIATIVE] = 0;
+    values[W_FOREST] = 0;
 
     // Pawn structure parameters
 
@@ -918,6 +923,11 @@ void cParam::InitTalStyle() {
     SetVal(W_SHIELD, 100, 0, 500, false);
     SetVal(W_STORM, 250, 0, 500, false);
     SetVal(W_CENTER, 110, 0, 500, false);
+
+    // V2: one bounded initiative score replaces the old stacked bonuses.
+    // 500 cp is the most material an attack can ever compensate for.
+    SetVal(W_INITIATIVE, 500, 0, 500, false);
+    SetVal(W_FOREST, 140, 0, 500, false);
 
     // Pawn structure parameters - Tal style (slightly relaxed)
     values[DB_MID] = -10;  // was -12 (slightly relaxed)

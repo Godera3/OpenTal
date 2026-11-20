@@ -690,53 +690,62 @@ int cEngine::Evaluate(POS *p, eData *e) {
      EvaluateKingAttack(p, e, WC);
 	EvaluateKingAttack(p, e, BC);
 
-    // TAL: Controlled aggression bonus
-    // The attack table (danger[att] * W_OWN_ATT) already rewards attacking positions.
-    // These are small preference nudges, not game-breaking eval distortions.
+    // V2: one bounded initiative score. The old version stacked a dozen small
+    // bonuses and could run past 1500 cp. Here a material deficit earns back at
+    // most W_INITIATIVE, and only when a real king attack is present.
     {
         extern const int tp_value[7];
+        int cap = Par.values[W_INITIATIVE];
 
-        for (eColor sd = WC; sd < 2; ++sd) {
-            eColor op = ~sd;
+        if (cap > 0) {
+            for (eColor sd = WC; sd < 2; ++sd) {
+                eColor op = ~sd;
 
-            // Small compensation for material sacrificed with real attack
-            int our_mat = 0, opp_mat = 0;
-            for (int tp = P; tp <= Q; tp++) {
-                our_mat += p->mCnt[sd][tp] * tp_value[tp];
-                opp_mat += p->mCnt[op][tp] * tp_value[tp];
+                int our_mat = 0, opp_mat = 0;
+                for (int tp = P; tp <= Q; tp++) {
+                    our_mat += p->mCnt[sd][tp] * tp_value[tp];
+                    opp_mat += p->mCnt[op][tp] * tp_value[tp];
+                }
+                int deficit = Max(0, opp_mat - our_mat);
+
+                // danger[] saturates at 600 (see InitTables), so dividing by
+                // 6 maps attack strength to the full 0..100 range.
+                int att = Min(e->att[sd], 399);
+                int initiative = Min(100, Par.danger[att] / 6);
+
+                // No queen means no attack, same rule EvaluateKingAttack uses.
+                if (p->mCnt[sd][Q] == 0) initiative = 0;
+
+                // Pieces in the enemy king's neighbourhood deepen the initiative.
+                int near = 0;
+                U64 all_our = p->mClBb[sd] & ~p->Pawns(sd);
+                int opp_king = p->KingSq(op);
+                while (all_our) {
+                    int sq = BB.PopFirstBit(&all_our);
+                    if (Dist.metric[sq][opp_king] < 4) near++;
+                }
+                initiative = Min(100, initiative + near * 4);
+
+                // A deficit bigger than a rook buys no extra compensation.
+                int comp = (cap * initiative * Min(deficit, 600)) / (100 * 600);
+                Add(e, sd, comp, comp / 2);
             }
-            int mat_diff = our_mat - opp_mat;
+        }
+    }
 
-            if (mat_diff < 0 && e->att[sd] > 50) {
-                int sac_bonus = Min(100, (-mat_diff * e->att[sd]) / 500);
-                Add(e, sd, sac_bonus, sac_bonus / 2);
-            }
+    // V2: the "forest" term. Tal wants mutual tension and an exposed enemy
+    // king. This is the style fingerprint, not an Elo term; it is capped too.
+    {
+        int cap = Par.values[W_FOREST];
 
-            // Exchange sacrifice nudge
-            if (p->mCnt[sd][R] < p->mCnt[op][R] && e->att[sd] > 60) {
-                Add(e, sd, 25, 12);
-            }
-
-            // Pieces clustered near enemy king = good (small per-piece bonus)
-            int pieces_near_king = 0;
-            U64 all_our = p->mClBb[sd] & ~p->Pawns(sd);
-            int opp_king = p->KingSq(op);
-            while (all_our) {
-                int sq = BB.PopFirstBit(&all_our);
-                if (Dist.metric[sq][opp_king] < 4) pieces_near_king++;
-            }
-            if (pieces_near_king >= 3) {
-                Add(e, sd, pieces_near_king * 4, pieces_near_king * 2);
-            }
-
-            // Slight disregard for own safety when attacking
-            if (e->att[sd] > 80) {
-                Add(e, sd, 15, 8);
-            }
-
-            // Proportional aggression bonus: more attack = small bonus
-            if (e->att[sd] > 30) {
-                Add(e, sd, Min(10, e->att[sd] / 10), Min(5, e->att[sd] / 20));
+        if (cap > 0) {
+            for (eColor sd = WC; sd < 2; ++sd) {
+                eColor op = ~sd;
+                int tension = BB.PopCnt(e->all_att[sd] & p->mClBb[op]);
+                int shield = BB.PopCnt(p->Pawns(op) & (Mask.ks_castle[op] | Mask.qs_castle[op]));
+                int exposed = Max(0, 8 - Min(8, shield));
+                int forest = Min(16, tension + exposed);
+                Add(e, sd, (cap * forest) / 16, (cap * forest) / 32);
             }
         }
     }
