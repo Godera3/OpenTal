@@ -387,7 +387,10 @@
       syncForm();
       setStatus('Saved. Re-analysing…');
       const state = window.OpenTalBoard && window.OpenTalBoard.current ? window.OpenTalBoard.current() : null;
-      if (shouldShowForTurn(lastTurn)) {
+      if (lastPlayer !== 'w' && lastPlayer !== 'b') {
+        clear();
+        if ($('badge')) $('badge').textContent = 'TAL — detecting side…';
+      } else if (shouldShowForTurn(lastTurn)) {
         requestAnalysis(state);
       } else {
         clear();
@@ -533,9 +536,9 @@
   }
 
   function shouldShowForTurn(turn) {
-    // Show only when we explicitly know the user's side and it's their turn.
-    // If side is unknown, show analysis for the side to move (avoid hiding the user's move).
-    if (lastPlayer !== 'w' && lastPlayer !== 'b') return true;
+    // Only show/analyze when we explicitly know the user's side and it's their turn.
+    // If unknown, stay quiet instead of guessing (guessing can show opponent moves).
+    if (lastPlayer !== 'w' && lastPlayer !== 'b') return false;
     return !turn || turn === lastPlayer;
   }
 
@@ -546,6 +549,12 @@
     lastAnalysis = result || null;
     clear();
 
+    if (lastPlayer !== 'w' && lastPlayer !== 'b') {
+      $('badge').textContent = 'TAL — detecting side…';
+      setStatus(panelOpen ? 'Waiting to detect your side…' : $('status').textContent);
+      place();
+      return;
+    }
     if (!shouldShowForTurn(lastTurn)) {
       $('badge').textContent = 'TAL — opponent to move';
       setStatus(panelOpen ? 'Waiting for your turn…' : $('status').textContent);
@@ -640,7 +649,10 @@
     window.OpenTalDebug.lastState = state;
     console.log('[OpenTal] state', state.source, 'turn', lastTurn, 'player', lastPlayer, 'flipped', state.flipped, state.fen, 'moves', lastMoves.length);
     place();
-    if (!shouldShowForTurn(lastTurn)) {
+    if (lastPlayer !== 'w' && lastPlayer !== 'b') {
+      $('badge').textContent = 'TAL — detecting side…';
+      setStatus(panelOpen ? 'Waiting to detect your side…' : '');
+    } else if (!shouldShowForTurn(lastTurn)) {
       $('badge').textContent = 'TAL — opponent to move';
       setStatus(panelOpen ? 'Waiting for your turn…' : '');
     } else {
