@@ -312,7 +312,7 @@
     host.id = HOST_ID;
     Object.assign(host.style, {
       position: 'fixed', left: '0', top: '0', width: '0', height: '0',
-      pointerEvents: 'none', zIndex: '2147483646'
+      display: 'block', pointerEvents: 'none', zIndex: '2147483647', overflow: 'visible'
     });
     shadow = host.attachShadow({ mode: 'open' });
     shadow.innerHTML = MARKUP;
