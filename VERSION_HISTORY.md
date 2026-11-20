@@ -107,3 +107,28 @@ target.
 
 Success is style — sacrifices, checks, exposed enemy kings, decisive games,
 opening variety — not Elo.
+
+### Reaudit and fixes (same day)
+
+A full reaudit of the first v2 build found nine flaws, all fixed before this
+build:
+
+- **PV desync (high):** `aggr + jitter` could crown a move without updating the
+  PV, so the TT stored a wrong `EXACT` score. PV now always tracks the chosen
+  move.
+- **Exposed-king mis-scale:** the shield masks have 6 usable pawn squares, not
+  8, so kings were never scored as fully shielded. Corrected to 6.
+- **Over-broad sacrifice tag:** `fl_sac` flagged every minor-takes-pawn,
+  disabling pruning on ordinary captures. Now limited to real material drops.
+- **Thread-unsafe `rand()`:** TalRandom jitter used global `rand()` across SMP
+  threads. Replaced with a per-thread xorshift seeded by thread id.
+- **TalMode reset TalRandom:** setting TalMode called `InitTalStyle()` which
+  reset the random toggle to off. The toggle is now preserved.
+- **Array bound:** `danger[att]` had no lower clamp. Now clamped to `>= 0`.
+- **Initiative too generous:** 500 cp refunded a whole queen and scaled linearly
+  with the deficit, rewarding bigger donations. Lowered to 300 cp, with the
+  deficit factor saturating at one exchange and a requirement of at least two
+  pieces near the enemy king before any initiative is paid.
+- Style survives the fixes: post-fix self-play still produced ~4.75 sacs and
+  ~6.5 checks per game (Tal's own games average 3.83 sacs and 3.68 checks), and
+  enemy king shield was driven to 0 in every game.

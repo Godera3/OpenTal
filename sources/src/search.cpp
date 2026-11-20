@@ -317,7 +317,15 @@ int cEngine::SearchRoot(POS *p, int ply, int alpha, int beta, int depth, int *pv
 		int aggr = 0;
 		if (p->InCheck()) aggr = Par.tal_random ? 14 : 8;
 		else if (victim != NO_TP) aggr = Par.tal_random ? 8 : 4;
-		int jitter = (Par.tal_random && !ply) ? (rand() % 12) : 0;
+
+		// Per-thread xorshift: rand() is shared global state under Lazy SMP.
+		int jitter = 0;
+		if (Par.tal_random && !ply) {
+			unsigned int r = mTalRng ? mTalRng : (0x9E3779B9u ^ (mcThreadId + 1) * 2654435761u);
+			r ^= r << 13; r ^= r >> 17; r ^= r << 5;
+			mTalRng = r;
+			jitter = (int)(r % 12);
+		}
 
 		// GATHER INFO ABOUT THE MOVE
 
@@ -435,11 +443,11 @@ int cEngine::SearchRoot(POS *p, int ply, int alpha, int beta, int depth, int *pv
 			best = score;
 			best_aggr = aggr;
 			best_jitter = jitter;
-			if (score > alpha) {
-				alpha = score;
-				BuildPv(pv, new_pv, move);
-				if (Glob.multiPv == 1) DisplayPv(0, score, pv);
-			}
+			// pv must track the chosen move even when its raw score did not
+			// raise alpha - otherwise TT gets a wrong EXACT score for another move.
+			BuildPv(pv, new_pv, move);
+			if (score > alpha) alpha = score;
+			if (Glob.multiPv == 1) DisplayPv(0, score, pv);
 		}
 
 	} // end of main loop
@@ -676,15 +684,18 @@ avoid_null:
 		if (victim != NO_TP) last_capt = Tsq(move);
 		else last_capt = -1;
 
-		// V2: every standard reduction deletes sacrifices before the attack
-		// behind them can be seen. Tag them here so the rules below skip them.
+		// V2: reductions delete sacrifices before the attack behind them can be
+		// seen. Only tag real material drops - routine minor-for-pawn captures
+		// are not sacrifices and must stay pruneable.
 		bool fl_sac = false;
+		int att_tp = p->TpOnSq(Fsq(move));
 		if (victim != NO_TP) {
-			fl_sac = tp_value[p->TpOnSq(Fsq(move))] > tp_value[victim] + 50;
-		} else {
-			int attacker_tp = p->TpOnSq(Fsq(move));
-			if (attacker_tp != P && attacker_tp != K
-				&& p->IsAttacked(Tsq(move), ~p->mSide)) fl_sac = true;
+			// giving up a major for a minor/pawn, or trading down at a real loss
+			fl_sac = (att_tp >= R && victim <= B)
+			      || (tp_value[att_tp] > tp_value[victim] + 150);
+		} else if (att_tp != P && att_tp != K) {
+			// quiet piece move onto a square the opponent attacks
+			if (p->IsAttacked(Tsq(move), ~p->mSide)) fl_sac = true;
 		}
 
 		p->DoMove(move, u);

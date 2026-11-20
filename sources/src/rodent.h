@@ -716,6 +716,7 @@ class cEngine {
     int mKiller[MAX_PLY][2];
     int mRefutation[64][64];
     const int mcThreadId;
+    unsigned int mTalRng = 0; // per-thread RNG state for TalRandom jitter
     int mRootDepth;
     bool mFlRootChoice;
 

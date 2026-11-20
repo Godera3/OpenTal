@@ -694,7 +694,6 @@ int cEngine::Evaluate(POS *p, eData *e) {
     // bonuses and could run past 1500 cp. Here a material deficit earns back at
     // most W_INITIATIVE, and only when a real king attack is present.
     {
-        extern const int tp_value[7];
         int cap = Par.values[W_INITIATIVE];
 
         if (cap > 0) {
@@ -710,13 +709,14 @@ int cEngine::Evaluate(POS *p, eData *e) {
 
                 // danger[] saturates at 600 (see InitTables), so dividing by
                 // 6 maps attack strength to the full 0..100 range.
-                int att = Min(e->att[sd], 399);
+                int att = Max(0, Min(e->att[sd], 399));
                 int initiative = Min(100, Par.danger[att] / 6);
 
                 // No queen means no attack, same rule EvaluateKingAttack uses.
                 if (p->mCnt[sd][Q] == 0) initiative = 0;
 
-                // Pieces in the enemy king's neighbourhood deepen the initiative.
+                // Pieces in the enemy king's neighbourhood turn pressure into
+                // an attack. One piece near the king is pressure, not an attack.
                 int near = 0;
                 U64 all_our = p->mClBb[sd] & ~p->Pawns(sd);
                 int opp_king = p->KingSq(op);
@@ -724,10 +724,13 @@ int cEngine::Evaluate(POS *p, eData *e) {
                     int sq = BB.PopFirstBit(&all_our);
                     if (Dist.metric[sq][opp_king] < 4) near++;
                 }
-                initiative = Min(100, initiative + near * 4);
+                if (near < 2) initiative = 0;
+                else initiative = Min(100, initiative + (near - 1) * 6);
 
-                // A deficit bigger than a rook buys no extra compensation.
-                int comp = (cap * initiative * Min(deficit, 600)) / (100 * 600);
+                // Compensation saturates by an exchange's worth of deficit.
+                // Throwing away a whole queen must never look "free".
+                int deficit_factor = Min(100, (deficit * 100) / 350);
+                int comp = (cap * initiative * deficit_factor) / (100 * 100);
                 Add(e, sd, comp, comp / 2);
             }
         }
@@ -742,8 +745,10 @@ int cEngine::Evaluate(POS *p, eData *e) {
             for (eColor sd = WC; sd < 2; ++sd) {
                 eColor op = ~sd;
                 int tension = BB.PopCnt(e->all_att[sd] & p->mClBb[op]);
+                // Each castle mask has 6 squares; only the three rank-2/7
+                // squares can hold a pawn, so the shield maxes out at 6.
                 int shield = BB.PopCnt(p->Pawns(op) & (Mask.ks_castle[op] | Mask.qs_castle[op]));
-                int exposed = Max(0, 8 - Min(8, shield));
+                int exposed = 6 - Min(6, shield);
                 int forest = Min(16, tension + exposed);
                 Add(e, sd, (cap * forest) / 16, (cap * forest) / 32);
             }

@@ -150,7 +150,9 @@ void ParseSetoption(const char *ptr) {
     } else if (strcmp(name, "talmode") == 0)                               {
         // Kept so Arena can list the option; this edition has no off switch.
         // Any value, including false, leaves the Tal evaluation active.
+        bool keep_random = Par.tal_random; // InitTalStyle resets defaults
         Par.InitTalStyle();
+        Par.tal_random = keep_random;
         printf("info string Tal Mode ON - Pure Mikhail Tal style!\n");
     } else if (strcmp(name, "talrandom") == 0)                              {
         valuebool(Par.tal_random, value);

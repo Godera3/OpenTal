@@ -925,8 +925,8 @@ void cParam::InitTalStyle() {
     SetVal(W_CENTER, 110, 0, 500, false);
 
     // V2: one bounded initiative score replaces the old stacked bonuses.
-    // 500 cp is the most material an attack can ever compensate for.
-    SetVal(W_INITIATIVE, 500, 0, 500, false);
+    // 300 cp cannot refund a queen (worth ~500); an attack must cost something.
+    SetVal(W_INITIATIVE, 300, 0, 500, false);
     SetVal(W_FOREST, 140, 0, 500, false);
 
     // Pawn structure parameters - Tal style (slightly relaxed)
