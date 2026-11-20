@@ -12,7 +12,11 @@ gets dragged into the open and they crack. Engines do not get rattled. A sacrifi
 that terrifying a person is simply a lost piece against a calculation engine.
 So win/loss is recorded for context, but the yardstick is the behaviour:
 
-- **sacs/game** — moves giving up more material than they capture
+- **true sacs/game** — captures by a bigger piece where the mover's material is
+  actually down at least 100cp once the opponent has replied. An earlier version
+  counted every big-piece-takes-small-piece capture, so winning a free pawn with
+  a queen registered as a "sacrifice"; that inflated both rows and hid the fact
+  that OpenTal donates material far more often than Tal.
 - **checks/game** — moves giving check
 - **sac -> check within 3/5** — whether a sacrifice actually generates an attack
   (this separates a sac from a donation)
@@ -43,18 +47,21 @@ Options:
 Opponent binaries are read from `~/.arena_linux/Engines`; override with
 `ARENA_ENGINES_DIR`. The reference games are `testing/tal-reference-games.pgn`.
 
-## Pilot result (Stockfish 10, depth 5, 4 games)
+## Result (Stockfish 10, depth 5, 6 games, corrected sac definition)
 
-| Metric | Real Tal (100 games) | OpenTal (4 games) |
+| Metric | Real Tal (100 games) | OpenTal (6 games) |
 |---|---|---|
-| sacs/game | 3.87 | 3.75 |
-| checks/game | 3.57 | 4.00 |
-| sac -> check within 3 | 46% | 53% |
-| sac -> check within 5 | 76% | 100% |
-| attacker-liquidation | 10% | 0% |
+| true sacs/game | 1.33 | **2.50** |
+| checks/game | 3.57 | 3.33 |
+| sac -> check within 3 | 59% | 47% |
+| sac -> check within 5 | 98% | 67% |
+| attacker-liquidation | 13% | 0% |
 
-OpenTal lost all four games — expected against an engine that never panics —
-but it matched or beat Tal on every style measure. That is the signal to use.
+OpenTal loses these games — expected against an engine that never panics — but
+the scoreboard is the style columns, not the result. With the corrected sac
+definition it is clear the engine sacrifices almost twice as often as Tal and
+the sacs generate fewer follow-up checks. That is the donation failure mode,
+not Tal's intuition.
 
 The guardrail: do not tune to change the result column. Tune only when a style
 metric drifts away from Tal's row.

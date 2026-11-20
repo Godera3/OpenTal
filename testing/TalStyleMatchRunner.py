@@ -154,49 +154,60 @@ def measure(fen, prefix, moves, color, result):
         if board.turn == color:
             victim = board.piece_type_at(move.to_square)
             attacker = board.piece_type_at(move.from_square)
-            is_sac = victim is not None and VAL[attacker] > VAL[victim] + 100
             if victim is not None:
                 captures += 1
-            if is_sac:
-                sacs += 1
-                snap = chess.Board(board.fen())
-                snap.push(move)
-                own_after_sac = sum(1 for sq in snap.pieces(chess.KNIGHT, color)
-                                    | snap.pieces(chess.BISHOP, color)
-                                    | snap.pieces(chess.ROOK, color)
-                                    | snap.pieces(chess.QUEEN, color)
-                                    if chess.square_distance(sq, snap.king(not color)) < 4)
-                # Follow-up pressure is what separates a sac from a donation:
-                # checks soon after, and attackers still near the king later.
-                tmp = chess.Board(snap.fen())
-                own = 0
-                for later in moves[i + 1:]:
-                    lm = chess.Move.from_uci(later)
-                    if lm not in tmp.legal_moves:
-                        break
-                    if tmp.turn == color:
-                        own += 1
-                        tmp.push(lm)
-                        if tmp.is_check():
-                            if own <= 3:
-                                follow3 += 1
-                            if own <= 5:
-                                follow5 += 1
-                        if own == 3:
-                            nearby = sum(1 for sq in
-                                         tmp.pieces(chess.KNIGHT, color)
-                                         | tmp.pieces(chess.BISHOP, color)
-                                         | tmp.pieces(chess.ROOK, color)
-                                         | tmp.pieces(chess.QUEEN, color)
-                                         if chess.square_distance(
-                                             sq, tmp.king(not color)) < 4)
-                            if nearby < 2 and own_after_sac >= 2:
-                                liquidated += 1
-                    else:
-                        tmp.push(lm)
+            mat_before = material(board, color)
             board.push(move)
             if board.is_check():
                 checks += 1
+
+            # A capture by a bigger piece is only a sacrifice if the material
+            # is actually gone once the opponent has replied. Otherwise it is
+            # just winning a pawn with a queen, and counting it as Tal style
+            # made a donation machine look like the Wizard of Riga.
+            if victim is not None and VAL[attacker] > VAL[victim] + 100:
+                if i + 1 < len(moves):
+                    board.push(chess.Move.from_uci(moves[i + 1]))
+                net = material(board, color) - mat_before
+                if i + 1 < len(moves):
+                    board.pop()
+
+                if net <= -100:
+                    sacs += 1
+                    own_after_sac = sum(
+                        1 for sq in board.pieces(chess.KNIGHT, color)
+                        | board.pieces(chess.BISHOP, color)
+                        | board.pieces(chess.ROOK, color)
+                        | board.pieces(chess.QUEEN, color)
+                        if chess.square_distance(sq, board.king(not color)) < 4)
+                    # Follow-up pressure is what separates a sac from a
+                    # donation: checks soon after, attackers still near later.
+                    tmp = chess.Board(board.fen())
+                    own = 0
+                    for later in moves[i + 1:]:
+                        lm = chess.Move.from_uci(later)
+                        if lm not in tmp.legal_moves:
+                            break
+                        if tmp.turn == color:
+                            own += 1
+                            tmp.push(lm)
+                            if tmp.is_check():
+                                if own <= 3:
+                                    follow3 += 1
+                                if own <= 5:
+                                    follow5 += 1
+                            if own == 3:
+                                nearby = sum(
+                                    1 for sq in tmp.pieces(chess.KNIGHT, color)
+                                    | tmp.pieces(chess.BISHOP, color)
+                                    | tmp.pieces(chess.ROOK, color)
+                                    | tmp.pieces(chess.QUEEN, color)
+                                    if chess.square_distance(
+                                        sq, tmp.king(not color)) < 4)
+                                if nearby < 2 and own_after_sac >= 2:
+                                    liquidated += 1
+                        else:
+                            tmp.push(lm)
         else:
             board.push(move)
 
@@ -296,7 +307,7 @@ def main():
           % (opp_name, args.depth, args.games, args.plies))
     baseline = tal_baseline(args.pgn)
     if baseline:
-        print("Tal real games: %.2f sacs/g %.2f checks/g, sac->check "
+        print("Tal real games: %.2f true sacs/g %.2f checks/g, sac->check "
               "within3=%.0f%% within5=%.0f%%, attacker-liquidation=%.0f%%"
               % (baseline["sacs"], baseline["checks"],
                  100.0 * baseline["follow3"] / max(1, baseline["sacs_total"]),
@@ -329,7 +340,7 @@ def main():
                  m["min_shield"], m["end_mat"]))
 
     g = totals["games"]
-    print("\nOpenTal (%d games): sacs=%.2f/g checks=%.2f/g captures=%.2f/g "
+    print("\nOpenTal (%d games): true sacs=%.2f/g checks=%.2f/g captures=%.2f/g "
           "sac->check within3=%.0f%% within5=%.0f%%, "
           "attacker-liquidation=%.0f%%" %
           (g, totals["sacs"] / g, totals["checks"] / g,
