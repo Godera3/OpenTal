@@ -21,9 +21,9 @@
       .wrap { position: absolute; inset: 0; font-family: "Inter", "Segoe UI", system-ui, sans-serif; }
       svg.board { display: block; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
       .pv-arrow { stroke-linecap: round; filter: drop-shadow(0 0 0.08px rgba(0,0,0,0.6)); }
-      .pv1 { stroke: #60a5fa; stroke-width: 0.14; opacity: 0.95; }
-      .pv2 { stroke: #ffd166; stroke-width: 0.11; opacity: 0.78; }
-      .pv3 { stroke: #c4b5fd; stroke-width: 0.11; opacity: 0.78; }
+      .pv1 { stroke: #60a5fa; fill: #60a5fa; stroke-width: 0.14; opacity: 0.95; }
+      .pv2 { stroke: #ffd166; fill: #ffd166; stroke-width: 0.11; opacity: 0.78; }
+      .pv3 { stroke: #c4b5fd; fill: #c4b5fd; stroke-width: 0.11; opacity: 0.78; }
       .topbar {
         position: absolute; top: 6px; left: 6px; right: 6px;
         display: flex; align-items: flex-start; justify-content: space-between; gap: 8px;
@@ -523,7 +523,9 @@
   function squareCentre(square) {
     const file = square.charCodeAt(0) - 97;
     const rank = Number(square[1]) - 1;
-    return flipped
+    const state = window.OpenTalBoard && window.OpenTalBoard.current ? window.OpenTalBoard.current() : null;
+    const isFlipped = state && typeof state.flipped === 'boolean' ? state.flipped : flipped;
+    return isFlipped
       ? { x: 7 - file + 0.5, y: rank + 0.5 }
       : { x: file + 0.5, y: 7 - rank + 0.5 };
   }
@@ -566,17 +568,34 @@
     const dx = to.x - from.x;
     const dy = to.y - from.y;
     const length = Math.hypot(dx, dy) || 1;
-    const tip = { x: to.x - (0.28 * dx) / length, y: to.y - (0.28 * dy) / length };
+    const ux = dx / length, uy = dy / length;
+    const px = -uy, py = ux;
+    const headLen = rank === 1 ? 0.30 : 0.26;
+    const headWidth = rank === 1 ? 0.17 : 0.14;
+    const shaftWidth = rank === 1 ? 0.15 : 0.12;
+    const tipX = to.x - ux * 0.06;
+    const tipY = to.y - uy * 0.06;
+    const baseX = tipX - ux * headLen;
+    const baseY = tipY - uy * headLen;
     const ns = 'http://www.w3.org/2000/svg';
 
-    const line = document.createElementNS(ns, 'line');
-    line.setAttribute('class', 'pv-arrow ' + cls);
-    line.setAttribute('x1', from.x);
-    line.setAttribute('y1', from.y);
-    line.setAttribute('x2', tip.x);
-    line.setAttribute('y2', tip.y);
-    line.setAttribute('marker-end', 'url(#head-' + cls + ')');
-    svgGroup.appendChild(line);
+    const shaft = document.createElementNS(ns, 'line');
+    shaft.setAttribute('class', 'pv-arrow ' + cls);
+    shaft.setAttribute('x1', from.x);
+    shaft.setAttribute('y1', from.y);
+    shaft.setAttribute('x2', baseX);
+    shaft.setAttribute('y2', baseY);
+    shaft.setAttribute('stroke-width', String(shaftWidth));
+    svgGroup.appendChild(shaft);
+
+    const head = document.createElementNS(ns, 'polygon');
+    head.setAttribute('class', cls);
+    head.setAttribute('points', [
+      tipX, tipY,
+      baseX + px * headWidth, baseY + py * headWidth,
+      baseX - px * headWidth, baseY - py * headWidth
+    ].join(' '));
+    svgGroup.appendChild(head);
     return true;
   }
 
