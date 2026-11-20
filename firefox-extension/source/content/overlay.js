@@ -12,7 +12,10 @@
     useBook: true,
     talMode: true,
     talRandom: false,
-    ponder: true
+    ponder: true,
+    autoplay: false,
+    autoplaySide: 'both',
+    autoplayDelay: 300
   };
 
   const MARKUP = `
@@ -119,7 +122,7 @@
       </div>
       <div class="panel hidden" id="panel">
         <div class="title">OpenTal</div>
-        <div class="sub">Tal-style analysis on this board. Settings auto-save.</div>
+        <div class="sub">Tal-style analysis. Bot games & puzzles only. Auto-play uses engine moves.</div>
 
         <div class="row">
           <div class="row-head"><span class="label">Search</span><span class="value" id="modeVal"></span></div>
@@ -154,6 +157,20 @@
           <label class="toggle"><input id="talMode" type="checkbox">Tal mode</label>
           <label class="toggle"><input id="talRandom" type="checkbox">Tal randomness</label>
           <label class="toggle"><input id="ponder" type="checkbox">Ponder</label>
+          <label class="toggle"><input id="autoplay" type="checkbox">Auto-play</label>
+        </div>
+
+        <div class="row" id="autoplaySideRow">
+          <div class="row-head"><span class="label">Play as</span><span class="value" id="autoplaySideVal"></span></div>
+          <div class="mode-switch">
+            <button class="mode-btn" id="sideWhite" type="button">White</button>
+            <button class="mode-btn" id="sideBlack" type="button">Black</button>
+            <button class="mode-btn" id="sideBoth" type="button">Both</button>
+          </div>
+        </div>
+        <div class="row" id="autoplayDelayRow">
+          <div class="row-head"><span class="label">Move delay</span><span class="value" id="autoplayDelayVal"></span></div>
+          <input id="autoplayDelay" type="range" min="0" max="3000" step="50">
         </div>
 
         <div class="actions">
@@ -295,6 +312,13 @@
   let saveVersion = 0;
   let outsideBound = false;
   let lastMoves = [];
+  let lastTurn = null;
+  let lastFen = null;
+  let lastAnalysis = null;
+  let autoplayTimer = null;
+  let autoplayInFlight = false;
+  let lastAutoPlayedKey = null;
+  let playRequestSeq = 0;
 
   function ensureHost() {
     if (host && host.isConnected) return;
@@ -329,16 +353,27 @@
     $('talMode').checked = !!settings.talMode;
     $('talRandom').checked = !!settings.talRandom;
     $('ponder').checked = !!settings.ponder;
+    $('autoplay').checked = !!settings.autoplay;
+    $('autoplayDelay').value = settings.autoplayDelay;
     $('movetimeVal').textContent = settings.movetime + ' ms';
     $('depthVal').textContent = String(settings.depth);
     $('hashVal').textContent = settings.hash + ' MB';
     $('threadsVal').textContent = String(settings.threads);
     $('multiPvVal').textContent = String(settings.multiPv);
+    $('autoplayDelayVal').textContent = settings.autoplayDelay + ' ms';
     $('modeVal').textContent = isDepth ? 'Fixed depth' : 'Time';
     $('modeTime').classList.toggle('active', !isDepth);
     $('modeDepth').classList.toggle('active', isDepth);
     $('movetimeRow').classList.toggle('disabled', isDepth);
     $('depthRow').classList.toggle('disabled', !isDepth);
+    const side = settings.autoplaySide || 'both';
+    $('sideWhite').classList.toggle('active', side === 'white');
+    $('sideBlack').classList.toggle('active', side === 'black');
+    $('sideBoth').classList.toggle('active', side === 'both');
+    $('autoplaySideVal').textContent = side === 'white' ? 'White' : (side === 'black' ? 'Black' : 'Both');
+    const autoOn = !!settings.autoplay;
+    $('autoplaySideRow').classList.toggle('disabled', !autoOn);
+    $('autoplayDelayRow').classList.toggle('disabled', !autoOn);
   }
 
   function readForm() {
@@ -352,7 +387,10 @@
       useBook: $('useBook').checked,
       talMode: $('talMode').checked,
       talRandom: $('talRandom').checked,
-      ponder: $('ponder').checked
+      ponder: $('ponder').checked,
+      autoplay: $('autoplay').checked,
+      autoplaySide: settings.autoplaySide || 'both',
+      autoplayDelay: Number($('autoplayDelay').value)
     };
   }
 
@@ -404,14 +442,18 @@
       queueAutoSave({ searchMode: 'depth' }, 0);
     });
 
-    ['movetime', 'depth', 'hash', 'threads', 'multiPv'].forEach((id) => {
+    ['movetime', 'depth', 'hash', 'threads', 'multiPv', 'autoplayDelay'].forEach((id) => {
       $(id).addEventListener('input', () => queueAutoSave(null, 400));
       $(id).addEventListener('change', () => queueAutoSave(null, 0));
     });
 
-    ['useBook', 'talMode', 'talRandom', 'ponder'].forEach((id) => {
+    ['useBook', 'talMode', 'talRandom', 'ponder', 'autoplay'].forEach((id) => {
       $(id).addEventListener('change', () => queueAutoSave(null, 0));
     });
+
+    $('sideWhite').addEventListener('click', () => queueAutoSave({ autoplaySide: 'white' }, 0));
+    $('sideBlack').addEventListener('click', () => queueAutoSave({ autoplaySide: 'black' }, 0));
+    $('sideBoth').addEventListener('click', () => queueAutoSave({ autoplaySide: 'both' }, 0));
 
     $('reset').addEventListener('click', () => {
       settings = Object.assign({}, DEFAULT_SETTINGS);
@@ -522,10 +564,77 @@
     return true;
   }
 
+  function shouldAutoplayForTurn(turn) {
+    if (!settings.autoplay) return false;
+    const side = settings.autoplaySide || 'both';
+    if (side === 'both') return turn === 'w' || turn === 'b';
+    if (side === 'white') return turn === 'w';
+    if (side === 'black') return turn === 'b';
+    return false;
+  }
+
+  function cancelAutoplay(reason) {
+    if (autoplayTimer) {
+      clearTimeout(autoplayTimer);
+      autoplayTimer = null;
+    }
+    if (reason) console.log('[OpenTal] autoplay', reason);
+  }
+
+  function tryScheduleAutoplay(result) {
+    if (!result || !settings.autoplay) return;
+    if (autoplayInFlight) return;
+    if (result.revision != null && result.revision !== revision) return;
+    const best = result.bestmove != null ? String(result.bestmove) : '';
+    if (!/^([a-h][1-8])([a-h][1-8])([qrbn])?$/.test(best)) return;
+    if (!lastFen || !shouldAutoplayForTurn(lastTurn)) return;
+    const key = lastFen + '|' + best;
+    if (key === lastAutoPlayedKey) return;
+
+    cancelAutoplay();
+    const delay = Math.max(0, Number(settings.autoplayDelay) || 0);
+    autoplayTimer = setTimeout(() => {
+      autoplayTimer = null;
+      if (!settings.autoplay) return;
+      if (result.revision != null && result.revision !== revision) return;
+      if (!lastFen || !shouldAutoplayForTurn(lastTurn)) return;
+      if (autoplayInFlight) return;
+      const curKey = lastFen + '|' + best;
+      if (curKey === lastAutoPlayedKey) return;
+      autoplayInFlight = true;
+      lastAutoPlayedKey = curKey;
+      const requestId = ++playRequestSeq;
+      setStatus('Auto-playing ' + best + '…');
+      window.postMessage({ source: 'opental-content', type: 'playMove', move: best, requestId }, '*');
+
+      // Fallback: if page bridge doesn't answer, release lock after a bit.
+      setTimeout(() => {
+        if (autoplayInFlight) {
+          autoplayInFlight = false;
+        }
+      }, 1500);
+    }, delay);
+  }
+
+  window.addEventListener('message', (event) => {
+    if (event.source !== window || !event.data || event.data.source !== 'opental-bridge') return;
+    if (event.data.type === 'movePlayed') {
+      autoplayInFlight = false;
+      if (event.data.ok) {
+        setStatus('Auto-played ' + (event.data.move || '') + '.');
+      } else {
+        setStatus('Auto-play failed: ' + (event.data.reason || 'unknown'));
+        // allow retry on same position if it didn't actually move
+        if (lastFen) lastAutoPlayedKey = null;
+      }
+    }
+  });
+
   function draw(result) {
     ensureHost();
     window.OpenTalDebug = window.OpenTalDebug || {};
     window.OpenTalDebug.lastResult = result;
+    lastAnalysis = result || null;
     clear();
     const best = result && result.bestmove != null ? String(result.bestmove) : '';
     const hasLines = result && Array.isArray(result.lines) && result.lines.length > 0;
@@ -534,6 +643,7 @@
     if (!candidates.length || !/^([a-h][1-8])([a-h][1-8])/.test(candidates[0].move || best)) {
       const shown = best ? best : '(empty)';
       $('badge').textContent = 'TAL — NO MOVE [' + shown + ']';
+      cancelAutoplay('no-move');
       place();
       return;
     }
@@ -566,6 +676,7 @@
 
     setStatus(panelOpen ? 'Ready.' : $('status').textContent);
     place();
+    tryScheduleAutoplay(result);
   }
 
   function requestAnalysis(state) {
@@ -593,6 +704,7 @@
       console.log('[OpenTal] error', msg);
       ensureHost();
       clear();
+      cancelAutoplay('analysis-error');
       $('badge').textContent = 'TAL — ' + (msg.message || 'error').slice(0, 48);
     }
   });
@@ -600,7 +712,13 @@
   window.OpenTalBoard.start((state) => {
     revision = state.revision;
     flipped = !!state.flipped;
+    lastTurn = state.turn || (state.fen ? state.fen.split(' ')[1] : null);
+    lastFen = state.fen || null;
     lastMoves = Array.isArray(state.moves) ? state.moves.slice() : [];
+    lastAnalysis = null;
+    cancelAutoplay('new-position');
+    autoplayInFlight = false;
+    lastAutoPlayedKey = null;
     clear();
     ensureHost();
     window.OpenTalDebug = window.OpenTalDebug || {};
