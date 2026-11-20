@@ -129,7 +129,7 @@
 
   function sleep(ms) { return new Promise((resolve) => setTimeout(resolve, ms)); }
 
-  async function tryClickMove(uci, promotion) {
+  async function tryClickMove(uci, promotion, fenBefore) {
     const board = findBoardElement();
     if (!board) return false;
     const rect = board.getBoundingClientRect();
@@ -157,12 +157,12 @@
     await sleep(20);
     // click fallback sequence for boards that expect clicks
     dispatchPointer(fromEl, 'click', fromPt.x, fromPt.y, 0);
-    await sleep(50);
+    await sleep(60);
     const toEl2 = document.elementFromPoint(toPt.x, toPt.y) || board;
     dispatchPointer(toEl2, 'click', toPt.x, toPt.y, 0);
 
     if (uci.length >= 5) {
-      await sleep(120);
+      await sleep(150);
       const wanted = (promotion || 'q').toLowerCase();
       const selectors = [
         '[data-piece="' + wanted + '"]',
@@ -179,7 +179,13 @@
         } catch (e) {}
       }
     }
-    return true;
+
+    await sleep(220);
+    try {
+      const fenAfter = readFen(findGame());
+      if (fenBefore && fenAfter && fenAfter !== fenBefore) return true;
+    } catch (e) {}
+    return false;
   }
 
   async function tryApiMove(uci, fenBefore) {
@@ -225,22 +231,20 @@
       });
     }
 
-    let sawUndefined = false;
     for (const fn of attempts) {
+      let before = fenBefore;
+      try { if (!before) before = readFen(findGame()); } catch (e) {}
       try {
         const result = fn();
-        if (result === true || (result && typeof result === 'object')) return true;
-        if (result === undefined) sawUndefined = true;
-        // null/false -> failed, continue
+        if (result === null || result === false) continue;
+        // truthy or undefined: verify actual position change before claiming success
+        await sleep(140);
+        let after = null;
+        try { after = readFen(findGame()); } catch (e) {}
+        if (before && after && after !== before) return true;
+        if (!before && after) return true;
+        // no observed change -> try next candidate
       } catch (e) { /* try next */ }
-    }
-
-    if (sawUndefined) {
-      await sleep(180);
-      try {
-        const fenAfter = readFen(findGame());
-        if (fenBefore && fenAfter && fenAfter !== fenBefore) return true;
-      } catch (e) {}
     }
     return false;
   }
@@ -255,9 +259,9 @@
       return { ok: true, method: 'api' };
     }
 
-    const clicked = await tryClickMove(match[0], promotion);
+    const clicked = await tryClickMove(match[0], promotion, fenBefore);
     if (clicked) return { ok: true, method: 'click' };
-    return { ok: false, reason: 'no-move-method' };
+    return { ok: false, reason: 'no-board-change' };
   }
 
   window.addEventListener('message', (event) => {
