@@ -24,8 +24,34 @@
       .pv1 { stroke: #60a5fa; stroke-width: 0.14; opacity: 0.95; }
       .pv2 { stroke: #ffd166; stroke-width: 0.11; opacity: 0.78; }
       .pv3 { stroke: #c4b5fd; stroke-width: 0.11; opacity: 0.78; }
+      .evalbar {
+        position: absolute; left: 6px; top: 10px; bottom: 10px; width: 12px;
+        border-radius: 999px; overflow: hidden; pointer-events: none;
+        background: linear-gradient(180deg, #2b2c33 0%, #14151b 100%);
+        border: 1px solid rgba(255,255,255,0.14);
+        box-shadow: 0 10px 24px rgba(0,0,0,0.35), inset 0 0 0 1px rgba(255,255,255,0.03);
+      }
+      .eval-fill {
+        position: absolute; left: 0; right: 0; bottom: 0; height: 50%;
+        background: linear-gradient(180deg, #ffffff 0%, #dfe3ea 100%);
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.7);
+        transition: height .35s cubic-bezier(.22,.8,.24,1), top .35s cubic-bezier(.22,.8,.24,1), bottom .35s cubic-bezier(.22,.8,.24,1);
+      }
+      .eval-mid {
+        position: absolute; left: 1px; right: 1px; top: 50%; height: 1px;
+        background: rgba(255,209,102,0.45); transform: translateY(-0.5px);
+      }
+      .eval-text {
+        position: absolute; left: 22px; top: 50%; transform: translateY(-50%);
+        padding: 2px 6px; border-radius: 999px; pointer-events: none;
+        font: 700 10px/1.2 ui-monospace, SFMono-Regular, monospace;
+        color: #f3efe6; background: rgba(10,10,14,0.72);
+        border: 1px solid rgba(255,255,255,0.12);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+        white-space: nowrap;
+      }
       .topbar {
-        position: absolute; top: 6px; left: 6px; right: 6px;
+        position: absolute; top: 6px; left: 42px; right: 6px;
         display: flex; align-items: flex-start; justify-content: space-between; gap: 8px;
         pointer-events: none;
       }
@@ -103,6 +129,8 @@
       .status { margin-top: 8px; min-height: 14px; font: 500 11px/1.3 system-ui, sans-serif; color: rgba(243,239,230,0.7); }
     </style>
     <div class="wrap">
+      <div class="evalbar" id="evalbar"><div class="eval-fill" id="evalFill"></div><div class="eval-mid"></div></div>
+      <div class="eval-text" id="evalText">0.0</div>
       <svg class="board" viewBox="0 0 8 8" preserveAspectRatio="none">
         <defs>
           <marker id="head-pv1" viewBox="0 0 3 3" markerWidth="3" markerHeight="3" refX="2.2" refY="1.5" orient="auto"><path d="M0,0 L3,1.5 L0,3 Z" fill="#60a5fa"></path></marker>
@@ -169,8 +197,10 @@
   let shadow = null;
   let flipped = false;
   let revision = -1;
+  let sideToMove = 'w';
   let settings = Object.assign({}, DEFAULT_SETTINGS);
   let panelOpen = false;
+  let lastEval = null; // { score, mate } in side-to-move perspective, or null
 
   function ensureHost() {
     if (host && host.isConnected) return;
@@ -317,6 +347,52 @@
     return 'book';
   }
 
+  function evalToWhite(evalData) {
+    if (!evalData) return null;
+    if (evalData.book) return { type: 'book' };
+    if (evalData.mate != null) {
+      return { type: 'mate', value: (sideToMove === 'w' ? evalData.mate : -evalData.mate) };
+    }
+    if (evalData.score != null) {
+      return { type: 'cp', value: (sideToMove === 'w' ? evalData.score : -evalData.score) };
+    }
+    return null;
+  }
+
+  function renderEval() {
+    if (!shadow) return;
+    const fill = $('evalFill');
+    const text = $('evalText');
+    if (!fill || !text) return;
+    const white = evalToWhite(lastEval);
+    let pct = 50;
+    let label = '…';
+    if (white && white.type === 'mate') {
+      pct = white.value > 0 ? 100 : 0;
+      label = (white.value > 0 ? 'M' : '-M') + Math.abs(white.value);
+    } else if (white && white.type === 'cp') {
+      const cp = white.value;
+      pct = 50 + 50 * (2 / (1 + Math.exp(-0.00368208 * cp)) - 1);
+      pct = Math.max(2, Math.min(98, pct));
+      const pawns = cp / 100;
+      label = (pawns >= 0 ? '+' : '') + pawns.toFixed(1);
+    } else if (white && white.type === 'book') {
+      label = 'book';
+      pct = 50;
+    }
+    const whiteOnBottom = !flipped;
+    if (whiteOnBottom) {
+      fill.style.bottom = '0';
+      fill.style.top = 'auto';
+      fill.style.height = pct + '%';
+    } else {
+      fill.style.top = '0';
+      fill.style.bottom = 'auto';
+      fill.style.height = pct + '%';
+    }
+    text.textContent = label;
+  }
+
   function clear() {
     if (!shadow) return;
     const arrows = $('arrows');
@@ -360,6 +436,8 @@
     if (!candidates.length || !/^([a-h][1-8])([a-h][1-8])/.test(candidates[0].move || best)) {
       const shown = best ? best : '(empty)';
       $('badge').textContent = 'TAL — NO MOVE [' + shown + ']';
+      lastEval = null;
+      renderEval();
       place();
       return;
     }
@@ -373,6 +451,8 @@
 
     const top = candidates[0];
     $('badge').textContent = 'TAL ' + top.move + ' · ' + formatScore(top);
+    lastEval = (top.score == null && top.mate == null) ? { book: true } : { score: top.score, mate: top.mate };
+    renderEval();
 
     if (candidates.length > 1) {
       candidates.forEach((line, index) => {
@@ -391,6 +471,9 @@
   function requestAnalysis(state) {
     if (!state || !state.fen) return;
     ensureHost();
+    sideToMove = state.turn || (state.fen ? state.fen.split(' ')[1] : sideToMove) || 'w';
+    lastEval = null;
+    renderEval();
     $('badge').textContent = 'TAL …';
     browser.runtime.sendMessage({
       type: 'analyse',
@@ -412,6 +495,8 @@
       console.log('[OpenTal] error', msg);
       ensureHost();
       clear();
+      lastEval = null;
+      renderEval();
       $('badge').textContent = 'TAL — ' + (msg.message || 'error').slice(0, 48);
     }
   });
@@ -419,8 +504,11 @@
   window.OpenTalBoard.start((state) => {
     revision = state.revision;
     flipped = !!state.flipped;
+    sideToMove = state.turn || (state.fen ? state.fen.split(' ')[1] : 'w') || 'w';
     clear();
     ensureHost();
+    lastEval = null;
+    renderEval();
     window.OpenTalDebug = window.OpenTalDebug || {};
     window.OpenTalDebug.lastSentFen = state.fen;
     window.OpenTalDebug.lastState = state;
