@@ -47,24 +47,40 @@ Options:
 Opponent binaries are read from `~/.arena_linux/Engines`; override with
 `ARENA_ENGINES_DIR`. The reference games are `testing/tal-reference-games.pgn`.
 
-## Result (Stockfish 10, depth 5, 6 games, corrected sac definition)
+## Result (Stockfish 10, depth 5, 12 games, three-attacker rule)
 
-| Metric | Real Tal (100 games) | OpenTal (6 games) |
+Tal's row is now measured from **the same ply** as the engine games; full-game
+numbers (1.98 sacs, 3.57 checks, 9.14 captures, 2.15 storms) include phases the
+probe never sees and should not be used as the target.
+
+| Metric | Tal from ply 16 | OpenTal (12 games) |
 |---|---|---|
-| true sacs/game | 1.98 | **1.75** |
-| checks/game | 3.57 | 2.75 |
-| sac -> check within 3 | 52% | **43%** |
-| sac -> check within 5 | 88% | **62%** |
-| attacker-liquidation | 15% | **10%** |
+| true sacs/game | 1.91 | 1.42 |
+| checks/game | 3.53 | **4.00** |
+| captures/game | 8.30 | 6.17 |
+| pawn storms/game | 1.84 | **1.92** |
+| forward pieces/own move | 0.82 | 1.28 |
+| sac -> check within 3 | 53% | **59%** |
+| sac -> check within 5 | 92% | **88%** |
+| attacker-liquidation | 15% | 24% |
 
 OpenTal usually loses these games — expected against an engine that never
-panics — but the scoreboard is the style columns, not the result. Two defects
-were fixed: the root aggression bias that promoted fail-low queen grabs, and
-the doubled check bonuses that made every check look forcing. Initiative
-compensation now tapers once a position is a rook down, which stopped the
-desperado sacs that were inflating the sacrifice count and starving the
-follow-up metric. The remaining gaps — fewer follow-up checks and slightly low
-check frequency — are reported rather than tuned away.
+panics — but the scoreboard is the style columns, not the result. The root
+aggression bias (fail-low queen grabs), doubled check bonuses (check spam),
+and unlimited initiative at a large deficit (desperado sacs) were fixed
+earlier. The initiative term now requires three attackers near the enemy king,
+which brought checks, storms and both follow-up columns to Tal's row. Sacs and
+captures are low, liquidation is high, and forward pieces are high; those are
+reported rather than tuned away. Capture count also depends on the opponent:
+the same build makes 10.1 captures/game against v1, which does not defend like
+Stockfish.
+
+Sample sizes are small: twelve games move by a whole sac per game between
+builds, so only changes that survive several levers are kept. Normalising to
+*own moves* rather than games changes the picture — Tal makes 0.106 checks and
+0.250 captures per own move from ply 16; OpenTal 0.107 and 0.164 — because
+games have different lengths. See `VERSION_HISTORY.md` for the rejected
+experiments.
 
 The guardrail: do not tune to change the result column. Tune only when a style
 metric drifts away from Tal's row.

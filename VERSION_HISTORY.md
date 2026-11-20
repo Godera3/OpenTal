@@ -227,6 +227,54 @@ Tal's row; check frequency moved away from it. That trade is recorded rather
 than hidden. The weak-engine floor holds (4.5/6 vs AICE); the v1 head-to-head
 went 4.5/10 → 3.5/10 in another small sample.
 
+## Phase-matched scoreboard, then the follow-up fix
+
+The next audit found a measurement defect: the harness compared full Tal games
+with engine games starting at ply 16. Tal's quiet openings and endgames were
+included in his row and not in OpenTal's. `tal_baseline(pgn, plies)` now
+measures Tal's own continuation from the same ply, and the harness also records
+pawn storms and forward pieces (non-pawns in the enemy half, per own move).
+
+Tal from ply 16, 100 games: 1.91 sacs/g, 3.53 checks/g, 8.30 captures/g,
+1.84 storms/g, 0.82 forward pieces/own move, sac→check within 5 92%.
+
+The remaining follow-up gap had a structural cause. `EvaluateKingAttack()`
+zeroed the whole attack score when the attacker had no queen, and the
+initiative term treated *one* piece near the enemy king as an attack. A sac
+made with two attackers therefore stopped paying as an attack the moment the
+position settled, so no follow-up was rewarded. The initiative term now needs
+three attackers within distance 4 of the king. Twelve depth-5 games against
+Stockfish 10, before → after:
+
+| Metric | Tal (ply 16) | Before | After |
+|---|---|---|---|
+| true sacs/game | 1.91 | 1.75 | 1.42 |
+| checks/game | 3.53 | 2.75 | **4.00** |
+| captures/game | 8.30 | 6.58 | 6.17 |
+| pawn storms/game | 1.84 | 1.17 | **1.92** |
+| forward pieces/own move | 0.82 | 1.26 | 1.28 |
+| sac → check within 3 | 53% | 43% | **59%** |
+| sac → check within 5 | 92% | 62% | **88%** |
+| attacker-liquidation | 15% | 10% | 24% |
+
+Checks, storms and both follow-up columns now sit at Tal's row; sacs and
+captures are low and liquidation is high. Against v1 at depth 6 the same build
+scored 6.5/10 (previous build 3.5/10) and still beats AICE 4.5/6. Specimen
+agreement stays 17/41.
+
+Five rejected bounded experiments, all on the same sample: a queenless attack
+at half or quarter weight sent checks to 5.67/6.08 per game; 1.25× check-threat
+bonuses gave 3.75 checks/g but collapsed follow-up to 14%/36%; `W_INITIATIVE`
+350 with three attackers dropped storms to 0.67/g; `W_FWD` 60 fixed forward
+pieces to 1.10 but collapsed follow-up to 35%/65%; `W_FOREST` 220 on top of the
+three-attacker rule cut captures to 5.42/g. `W_FWD` 90 was the closest call —
+it restored sacs to 2.08/g and storms to 1.92/g but cost checks (2.92/g) and
+follow-up (48%/76%) — so the three-attacker rule stands alone.
+
+The low capture count is partly the opponent, not the engine: the same build
+makes 10.1 captures/game against v1 and 6.17 against Stockfish, which does not
+hang pieces the way Tal's human opponents did. It is reported, not tuned away.
+
 ## The decisive specimen sacs: not a defect
 
 The specimen's `18.Qxg6+` and `21.Rxe7+` were never reproduced. That is
