@@ -70,7 +70,7 @@ void UciLoop() {
             PrintVersion();
 
             Glob.is_console = false;
-            printf("id author Pawel Koziol (based on Sungorus 1.4 by Pablo Vazquez)\n");
+            printf("id author Pawel Koziol (Rodent), Pablo Vazquez (Sungorus 1.4), Gabriel (OpenTal Tal-style edition)\n");
             PrintOverrides();
             PrintUciOptions();
             printf("uciok\n");
