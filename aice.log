@@ -1,0 +1,83 @@
+Welcome to AICE 0.99.2 
+Author: Anastasios Milikas / Christos Boussios
+Hash size 32.0 Mb (1398102 entries)
+Pawn hash size 0.5 Mb (6242 entries)
+No book loaded.
+POSITION FEN: rnbqkb1r/p4p2/2p1pp1p/1p2P3/2pP4/2N2N2/PP3PPP/R2QKB1R w KQkq - 0 1 
+ENGINE IS PLAYING WHITE. OPENING STAGE. Ply 0 Allocated time 0 ms Left 0 ms
+info depth 1 seldepth 2 score cp -8 time 0 nodes 4 pv e5f6 
+info depth 1 seldepth 3 score cp 28 time 0 nodes 30 pv c3e2 
+info depth 1 seldepth 3 score cp 36 time 0 nodes 40 pv c3e4 
+info depth 1 seldepth 3 score cp 79 time 0 nodes 106 pv f1e2 
+info depth 2 seldepth 6 score cp 41 time 0 nodes 245 pv f1e2 f8b4 
+info depth 3 seldepth 9 score cp 55 time 1 nodes 1053 pv f1e2 f6e5 d4e5 
+SEARCH FINISHED, 3 KNodes (51.5 QNODES) BEST MOVE Bf1-e2 MOVE ORDERING 84.8
+NULL-MOVE 79.9  HASH HITS 19.2  CUTOFFS 0.0
+
+Welcome to AICE 0.99.2 
+Author: Anastasios Milikas / Christos Boussios
+Hash size 32.0 Mb (1398102 entries)
+Pawn hash size 0.5 Mb (6242 entries)
+No book loaded.
+POSITION FEN: rnbqkb1r/p4p2/2p1pp1p/1p2P3/2pP4/2N2N2/PP3PPP/R2QKB1R w KQkq - 0 1 
+ENGINE IS PLAYING WHITE. OPENING STAGE. Ply 0 Allocated time 0 ms Left 0 ms
+info depth 1 seldepth 2 score cp -8 time 0 nodes 4 pv e5f6 
+info depth 1 seldepth 3 score cp 28 time 0 nodes 30 pv c3e2 
+info depth 1 seldepth 3 score cp 36 time 0 nodes 40 pv c3e4 
+info depth 1 seldepth 3 score cp 79 time 0 nodes 106 pv f1e2 
+info depth 2 seldepth 6 score cp 41 time 0 nodes 245 pv f1e2 f8b4 
+info depth 3 seldepth 9 score cp 55 time 0 nodes 1053 pv f1e2 f6e5 d4e5 
+SEARCH FINISHED, 3 KNodes (51.5 QNODES) BEST MOVE Bf1-e2 MOVE ORDERING 84.8
+NULL-MOVE 79.9  HASH HITS 19.2  CUTOFFS 0.0
+
+Welcome to AICE 0.99.2 
+Author: Anastasios Milikas / Christos Boussios
+Hash size 32.0 Mb (1398102 entries)
+Pawn hash size 0.5 Mb (6242 entries)
+No book loaded.
+POSITION FEN: rnbqkb1r/p4p2/2p1pp1p/1p2P3/2pP4/2N2N2/PP3PPP/R2QKB1R w KQkq - 0 1 
+ENGINE IS PLAYING WHITE. OPENING STAGE. Ply 0 Allocated time 0 ms Left 0 ms
+info depth 1 seldepth 2 score cp -8 time 0 nodes 4 pv e5f6 
+info depth 1 seldepth 3 score cp 28 time 0 nodes 30 pv c3e2 
+info depth 1 seldepth 3 score cp 36 time 0 nodes 40 pv c3e4 
+info depth 1 seldepth 3 score cp 79 time 0 nodes 106 pv f1e2 
+info depth 2 seldepth 6 score cp 41 time 0 nodes 245 pv f1e2 f8b4 
+info depth 3 seldepth 9 score cp 55 time 1 nodes 1053 pv f1e2 f6e5 d4e5 
+SEARCH FINISHED, 3 KNodes (51.5 QNODES) BEST MOVE Bf1-e2 MOVE ORDERING 84.8
+NULL-MOVE 79.9  HASH HITS 19.2  CUTOFFS 0.0
+
+Bye bye from AICE!
+Welcome to AICE 0.99.2 
+Author: Anastasios Milikas / Christos Boussios
+Hash size 32.0 Mb (1398102 entries)
+Pawn hash size 0.5 Mb (6242 entries)
+No book loaded.
+POSITION FEN: rnbqkb1r/p4p2/2p1pp1p/1p2P3/2pP4/2N2N2/PP3PPP/R2QKB1R w KQkq - 0 1 
+ENGINE IS PLAYING WHITE. OPENING STAGE. Ply 0 Allocated time 0 ms Left 0 ms
+info depth 1 seldepth 2 score cp -8 time 0 nodes 4 pv e5f6 
+info depth 1 seldepth 3 score cp 28 time 0 nodes 30 pv c3e2 
+info depth 1 seldepth 3 score cp 36 time 0 nodes 40 pv c3e4 
+info depth 1 seldepth 3 score cp 79 time 0 nodes 106 pv f1e2 
+info depth 2 seldepth 6 score cp 41 time 0 nodes 245 pv f1e2 f8b4 
+info depth 3 seldepth 9 score cp 55 time 0 nodes 1053 pv f1e2 f6e5 d4e5 
+SEARCH FINISHED, 3 KNodes (51.5 QNODES) BEST MOVE Bf1-e2 MOVE ORDERING 84.8
+NULL-MOVE 79.9  HASH HITS 19.2  CUTOFFS 0.0
+
+Bye bye from AICE!
+Welcome to AICE 0.99.2 
+Author: Anastasios Milikas / Christos Boussios
+Hash size 32.0 Mb (1398102 entries)
+Pawn hash size 0.5 Mb (6242 entries)
+No book loaded.
+POSITION FEN: rnbqkb1r/p4p2/2p1pp1p/1p2P3/2pP4/2N2N2/PP3PPP/R2QKB1R w KQkq - 0 1 
+ENGINE IS PLAYING WHITE. OPENING STAGE. Ply 0 Allocated time 0 ms Left 0 ms
+info depth 1 seldepth 2 score cp -8 time 0 nodes 4 pv e5f6 
+info depth 1 seldepth 3 score cp 28 time 0 nodes 30 pv c3e2 
+info depth 1 seldepth 3 score cp 36 time 0 nodes 40 pv c3e4 
+info depth 1 seldepth 3 score cp 79 time 0 nodes 106 pv f1e2 
+info depth 2 seldepth 6 score cp 41 time 0 nodes 245 pv f1e2 f8b4 
+info depth 3 seldepth 9 score cp 55 time 0 nodes 1053 pv f1e2 f6e5 d4e5 
+SEARCH FINISHED, 3 KNodes (51.5 QNODES) BEST MOVE Bf1-e2 MOVE ORDERING 84.8
+NULL-MOVE 79.9  HASH HITS 19.2  CUTOFFS 0.0
+
+Bye bye from AICE!

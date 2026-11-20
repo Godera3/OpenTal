@@ -114,7 +114,9 @@ which is what answers "which one is more Tal":
 
 `--opponent` accepts any engine from the match runner; `--old-as-a` puts v1 in
 v2's seat so both engines can be measured against the same stable opponent.
-Latest depth-6 results: v2 scores 3.5/10 against v1 and 4.5/6 against AICE,
-so the weak-engine floor holds. Earlier builds scored 6/10 and 6/6 before the
-check-spam and desperado-sac fixes; those trades are recorded in
+Latest depth-6 results: v2 scores 6.5/10 against v1. Five repeat matches
+against AICE scored 4.0, 4.0, 4.5, 3.0 and 5.0 out of 6 (median 4.0) — the
+weak-engine floor holds on average, but a single match is noisy, so do not
+record one score as a fixed floor. Earlier builds scored 6/10 and 6/6 before
+the check-spam and desperado-sac fixes; those trades are recorded in
 `VERSION_HISTORY.md`. Style is the scoreboard here, not the result column.

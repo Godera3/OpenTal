@@ -259,8 +259,9 @@ Stockfish 10, before → after:
 
 Checks, storms and both follow-up columns now sit at Tal's row; sacs and
 captures are low and liquidation is high. Against v1 at depth 6 the same build
-scored 6.5/10 (previous build 3.5/10) and still beats AICE 4.5/6. Specimen
-agreement stays 17/41.
+scored 6.5/10 (previous build 3.5/10). Five repeat depth-6 matches against
+AICE scored 4.0, 4.0, 4.5, 3.0 and 5.0 out of 6 (median 4.0); the earlier
+4.5/6 was one sample, not a fixed floor. Specimen agreement stays 17/41.
 
 Five rejected bounded experiments, all on the same sample: a queenless attack
 at half or quarter weight sent checks to 5.67/6.08 per game; 1.25× check-threat
