@@ -21,12 +21,12 @@
       .wrap { position: absolute; inset: 0; font-family: "Inter", "Segoe UI", system-ui, sans-serif; }
       svg.board { display: block; width: 100%; height: 100%; overflow: visible; }
       .pv-arrow { stroke-linecap: round; filter: drop-shadow(0 0 0.08px rgba(0,0,0,0.6)); }
-      .pv1 { stroke: #ffd166; stroke-width: 0.14; opacity: 0.95; }
-      .pv2 { stroke: #7dd3fc; stroke-width: 0.11; opacity: 0.78; }
+      .pv1 { stroke: #60a5fa; stroke-width: 0.14; opacity: 0.95; }
+      .pv2 { stroke: #ffd166; stroke-width: 0.11; opacity: 0.78; }
       .pv3 { stroke: #c4b5fd; stroke-width: 0.11; opacity: 0.78; }
       .sq { opacity: 0.2; }
-      .sq.pv1 { fill: #ffd166; }
-      .sq.pv2 { fill: #7dd3fc; opacity: 0.14; }
+      .sq.pv1 { fill: #60a5fa; }
+      .sq.pv2 { fill: #ffd166; opacity: 0.14; }
       .sq.pv3 { fill: #c4b5fd; opacity: 0.14; }
       .topbar {
         position: absolute; top: 6px; left: 6px; right: 6px;
@@ -54,8 +54,8 @@
         padding: 3px 8px; border-radius: 999px;
         font: 600 11px/1.2 ui-monospace, SFMono-Regular, monospace;
       }
-      .chip.pv1 { border-color: rgba(255,209,102,0.35); color: #ffd166; }
-      .chip.pv2 { border-color: rgba(125,211,252,0.35); color: #7dd3fc; }
+      .chip.pv1 { border-color: rgba(96,165,250,0.35); color: #60a5fa; }
+      .chip.pv2 { border-color: rgba(255,209,102,0.35); color: #ffd166; }
       .chip.pv3 { border-color: rgba(196,181,253,0.35); color: #c4b5fd; }
       .gear {
         width: 30px; height: 30px; border-radius: 10px; cursor: pointer; flex: 0 0 auto;
@@ -109,8 +109,8 @@
     <div class="wrap">
       <svg class="board" viewBox="0 0 8 8" preserveAspectRatio="none">
         <defs>
-          <marker id="head-pv1" viewBox="0 0 3 3" markerWidth="3" markerHeight="3" refX="2.2" refY="1.5" orient="auto"><path d="M0,0 L3,1.5 L0,3 Z" fill="#ffd166"></path></marker>
-          <marker id="head-pv2" viewBox="0 0 3 3" markerWidth="3" markerHeight="3" refX="2.2" refY="1.5" orient="auto"><path d="M0,0 L3,1.5 L0,3 Z" fill="#7dd3fc"></path></marker>
+          <marker id="head-pv1" viewBox="0 0 3 3" markerWidth="3" markerHeight="3" refX="2.2" refY="1.5" orient="auto"><path d="M0,0 L3,1.5 L0,3 Z" fill="#60a5fa"></path></marker>
+          <marker id="head-pv2" viewBox="0 0 3 3" markerWidth="3" markerHeight="3" refX="2.2" refY="1.5" orient="auto"><path d="M0,0 L3,1.5 L0,3 Z" fill="#ffd166"></path></marker>
           <marker id="head-pv3" viewBox="0 0 3 3" markerWidth="3" markerHeight="3" refX="2.2" refY="1.5" orient="auto"><path d="M0,0 L3,1.5 L0,3 Z" fill="#c4b5fd"></path></marker>
         </defs>
         <g id="hits"></g>
