@@ -24,10 +24,6 @@
       .pv1 { stroke: #60a5fa; stroke-width: 0.14; opacity: 0.95; }
       .pv2 { stroke: #ffd166; stroke-width: 0.11; opacity: 0.78; }
       .pv3 { stroke: #c4b5fd; stroke-width: 0.11; opacity: 0.78; }
-      .sq { opacity: 0.2; }
-      .sq.pv1 { fill: #60a5fa; }
-      .sq.pv2 { fill: #ffd166; opacity: 0.14; }
-      .sq.pv3 { fill: #c4b5fd; opacity: 0.14; }
       .topbar {
         position: absolute; top: 6px; left: 6px; right: 6px;
         display: flex; align-items: flex-start; justify-content: space-between; gap: 8px;
@@ -113,7 +109,6 @@
           <marker id="head-pv2" viewBox="0 0 3 3" markerWidth="3" markerHeight="3" refX="2.2" refY="1.5" orient="auto"><path d="M0,0 L3,1.5 L0,3 Z" fill="#ffd166"></path></marker>
           <marker id="head-pv3" viewBox="0 0 3 3" markerWidth="3" markerHeight="3" refX="2.2" refY="1.5" orient="auto"><path d="M0,0 L3,1.5 L0,3 Z" fill="#c4b5fd"></path></marker>
         </defs>
-        <g id="hits"></g>
         <g id="arrows"></g>
       </svg>
       <div class="topbar">
@@ -325,14 +320,12 @@
   function clear() {
     if (!shadow) return;
     const arrows = $('arrows');
-    const hits = $('hits');
     const lines = $('lines');
     if (arrows) arrows.innerHTML = '';
-    if (hits) hits.innerHTML = '';
     if (lines) { lines.innerHTML = ''; lines.classList.add('hidden'); }
   }
 
-  function drawArrow(svgGroup, hitGroup, move, rank) {
+  function drawArrow(svgGroup, move, rank) {
     const match = /^([a-h][1-8])([a-h][1-8])([qrbn])?$/.exec(move || '');
     if (!match) return false;
     const cls = 'pv' + rank;
@@ -343,22 +336,6 @@
     const length = Math.hypot(dx, dy) || 1;
     const tip = { x: to.x - (0.28 * dx) / length, y: to.y - (0.28 * dy) / length };
     const ns = 'http://www.w3.org/2000/svg';
-
-    const fromRect = document.createElementNS(ns, 'rect');
-    fromRect.setAttribute('class', 'sq ' + cls);
-    fromRect.setAttribute('x', Math.floor(from.x));
-    fromRect.setAttribute('y', Math.floor(from.y));
-    fromRect.setAttribute('width', 1);
-    fromRect.setAttribute('height', 1);
-    hitGroup.appendChild(fromRect);
-
-    const toRect = document.createElementNS(ns, 'rect');
-    toRect.setAttribute('class', 'sq ' + cls);
-    toRect.setAttribute('x', Math.floor(to.x));
-    toRect.setAttribute('y', Math.floor(to.y));
-    toRect.setAttribute('width', 1);
-    toRect.setAttribute('height', 1);
-    hitGroup.appendChild(toRect);
 
     const line = document.createElementNS(ns, 'line');
     line.setAttribute('class', 'pv-arrow ' + cls);
@@ -388,11 +365,10 @@
     }
 
     const arrows = $('arrows');
-    const hits = $('hits');
     const lineBox = $('lines');
     // draw in reverse so PV1 is on top
     for (let i = candidates.length - 1; i >= 0; i--) {
-      drawArrow(arrows, hits, candidates[i].move, i + 1);
+      drawArrow(arrows, candidates[i].move, i + 1);
     }
 
     const top = candidates[0];
