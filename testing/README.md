@@ -58,3 +58,21 @@ but it matched or beat Tal on every style measure. That is the signal to use.
 
 The guardrail: do not tune to change the result column. Tune only when a style
 metric drifts away from Tal's row.
+
+## Named specimen: the queen-sac game
+
+`tal-queen-sac-vs-1800.pgn` is a Tal game against a chess.com 1800 human. It is
+the sharpest style specimen in the set: Tal stacks four sacrifices, then plays
+`18.Qxg6+!!`, hunts the king, and wins after `21.Rxe7+`.
+
+`tal_specimen_probe.py` replays it and reports where OpenTal agrees with Tal at
+depth 5, plus the objective engine verdict on the queen sac:
+
+    PYTHONPATH=/tmp/opencode/chesslib python3 testing/tal_specimen_probe.py
+
+Current result: OpenTal matches 17/41 plies. It finds the small sacrifices
+(`Bxd5`, `Nxd5`, `Rxh4`, `Rxh3`) but refuses the decisive ones (`Qxg6+`,
+`Rxe7+`) because its attack compensation is gated on owning a queen and capped
+at 300 cp. Stockfish scores the post-sac position around -7000 cp: the sac was
+objectively lost and worked only because the human resigned. That is the
+style-vs-soundness tradeoff this probe exists to make visible.

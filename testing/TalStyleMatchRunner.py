@@ -142,6 +142,7 @@ def measure(fen, prefix, moves, color, result):
     for uci in prefix:
         board.push(uci)
     start = board.copy()
+    op = not color
     sacs = checks = captures = 0
     follow3 = follow5 = 0
     liquidated = 0
