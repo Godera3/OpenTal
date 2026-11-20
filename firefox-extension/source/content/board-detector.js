@@ -14,8 +14,21 @@
 
   let board = null;
   let lastFen = null;
+  let bridgeFen = null;
   let revision = 0;
   const listeners = [];
+
+  window.addEventListener('message', (event) => {
+    if (event.source !== window || !event.data || event.data.source !== 'opental-bridge') return;
+    if (typeof event.data.fen === 'string') bridgeFen = event.data.fen;
+  });
+
+  try {
+    const script = document.createElement('script');
+    script.src = browser.runtime.getURL('content/page-bridge.js');
+    script.onload = () => script.remove();
+    (document.head || document.documentElement).appendChild(script);
+  } catch (error) { /* extension context unavailable */ }
 
   function findBoard() {
     for (const selector of BOARD_SELECTORS) {
@@ -29,45 +42,54 @@
     return null;
   }
 
+  function fromBridge() {
+    return bridgeFen;
+  }
+
   function fromSiteApi() {
     try {
-      const site = window.chessboard;
+      const site = window.wrappedJSObject && window.wrappedJSObject.chessboard;
       if (site && typeof site.getRelationship === 'function') {
         const game = site.getRelationship().game;
-        if (game && typeof game.getFEN === 'function') return game.getFEN();
+        if (game && typeof game.getFEN === 'function') return String(game.getFEN());
       }
     } catch (error) { /* page state not ready */ }
-
-    const candidates = [board && board.game, window.game];
-    for (const game of candidates) {
-      if (!game) continue;
-      try {
-        if (typeof game.fen === 'function') return game.fen();
-        if (typeof game.getFEN === 'function') return game.getFEN();
-      } catch (error) { /* stale object during navigation */ }
-    }
     return null;
+  }
+
+  function collectPieces(root, out) {
+    if (!root || !root.querySelectorAll) return;
+    root.querySelectorAll(PIECE_SELECTOR).forEach((el) => out.push(el));
+    root.querySelectorAll('*').forEach((el) => {
+      if (el.shadowRoot) collectPieces(el.shadowRoot, out);
+    });
   }
 
   function fromDom() {
     const root = board || document;
-    let pieces = root.querySelectorAll(PIECE_SELECTOR);
-    if (!pieces.length && root.shadowRoot) {
-      pieces = root.shadowRoot.querySelectorAll(PIECE_SELECTOR);
-    }
+    const pieces = [];
+    collectPieces(root, pieces);
+    if (!pieces.length) collectPieces(document, pieces);
     if (!pieces.length) return null;
 
     const squares = new Array(64).fill('');
     pieces.forEach((el) => {
-      const cls = typeof el.className === 'string' ? el.className : '';
+      const cls = typeof el.className === 'string'
+        ? el.className
+        : (el.className && el.className.baseVal) || '';
       const coord = /square-(\d)(\d)/.exec(cls);
-      const type = /(king|queen|rook|bishop|knight|pawn)/.exec(cls);
+      const type = /(king|queen|rook|bishop|knight|pawn)/.exec(cls) || /(wk|wq|wr|wb|wn|wp|bk|bq|br|bb|bn|bp)/.exec(cls);
       if (!coord || !type) return;
       const file = Number(coord[1]) - 1;
       const rank = Number(coord[2]) - 1;
       if (file < 0 || file > 7 || rank < 0 || rank > 7) return;
-      const code = PIECE_CODES[type[1]];
-      squares[rank * 8 + file] = /white/.test(cls) ? code.toUpperCase() : code;
+      let code = PIECE_CODES[type[1]];
+      if (!code) {
+        const short = type[1];
+        code = short[0] === 'w' ? short[1].toUpperCase() : short[1];
+      }
+      const white = /(?:^|\s|-)w|white/.test(cls);
+      squares[rank * 8 + file] = white ? code.toUpperCase() : code.toLowerCase();
     });
 
     let placement = '';
@@ -109,9 +131,9 @@
 
   function current() {
     if (!board || !board.isConnected) findBoard();
-    const fen = fromSiteApi() || fromDom();
+    const fen = fromBridge() || fromSiteApi() || fromDom();
     if (!fen) return null;
-    return { fen, flipped: flipped(), board, revision };
+    return { fen, flipped: flipped(), board, revision, source: fromBridge() ? 'bridge' : (fromSiteApi() ? 'api' : 'dom') };
   }
 
   function tick() {
@@ -120,6 +142,7 @@
     lastFen = state.fen;
     revision++;
     state.revision = revision;
+    window.OpenTalDebug.lastState = state;
     listeners.forEach((listener) => listener(state));
   }
 
@@ -129,6 +152,8 @@
     scheduled = true;
     setTimeout(() => { scheduled = false; tick(); }, 60);
   }
+
+  window.OpenTalDebug = window.OpenTalDebug || { lastState: null };
 
   window.OpenTalBoard = {
     start(listener) {

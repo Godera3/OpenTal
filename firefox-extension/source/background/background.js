@@ -42,6 +42,7 @@ function connect() {
       report('connected to ' + engineName);
       flush();
     } else if (msg.type === 'analysis' || msg.type === 'error') {
+      report('host -> tab ' + JSON.stringify(msg).slice(0, 300));
       deliver(msg);
     } else if (msg.type === 'pong') {
       engineName = msg.engine;

@@ -75,10 +75,14 @@
 
   function draw(result) {
     ensureHost();
-    const match = /^([a-h][1-8])([a-h][1-8])([qrbn])?$/.exec(result.bestmove || '');
+    window.OpenTalDebug = window.OpenTalDebug || {};
+    window.OpenTalDebug.lastResult = result;
+    const best = result && result.bestmove != null ? String(result.bestmove) : '';
+    const match = /^([a-h][1-8])([a-h][1-8])([qrbn])?$/.exec(best);
     clear();
     if (!match) {
-      shadow.querySelector('#badge').textContent = 'TAL — NO MOVE';
+      const shown = best ? best : '(empty)';
+      shadow.querySelector('#badge').textContent = 'TAL — NO MOVE [' + shown + ']';
       return;
     }
 
@@ -124,10 +128,13 @@
   browser.runtime.onMessage.addListener((msg) => {
     if (msg.type === 'analysis') {
       if (msg.revision != null && msg.revision < revision) return;
+      console.log('[OpenTal] analysis', msg);
       draw(msg);
     } else if (msg.type === 'error') {
+      console.log('[OpenTal] error', msg);
+      ensureHost();
       clear();
-      shadow.querySelector('#badge').textContent = 'TAL — ' + msg.message.slice(0, 40);
+      shadow.querySelector('#badge').textContent = 'TAL — ' + (msg.message || 'error').slice(0, 48);
     }
   });
 
@@ -136,11 +143,17 @@
     flipped = state.flipped;
     clear();
     ensureHost();
+    window.OpenTalDebug = window.OpenTalDebug || {};
+    window.OpenTalDebug.lastSentFen = state.fen;
+    console.log('[OpenTal] analyse', state.source, state.fen);
     shadow.querySelector('#badge').textContent = 'TAL …';
     place();
     browser.runtime.sendMessage({
       type: 'analyse', fen: state.fen, revision: state.revision, movetime: 600
-    }).catch(() => {});
+    }).catch((error) => {
+      shadow.querySelector('#badge').textContent = 'TAL — bridge unavailable';
+      console.log('[OpenTal] send failed', error);
+    });
   });
 
   window.addEventListener('resize', place);
