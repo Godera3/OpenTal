@@ -147,14 +147,9 @@ void ParseSetoption(const char *ptr) {
         Par.hist_limit = -MAX_HIST + ((MAX_HIST * Par.hist_perc) / 100);
         Glob.should_clear = true;
     } else if (strcmp(name, "talmode") == 0)                               {
-        // Pure Mikhail Tal mode - always ON in this edition
-        // This option is here for compatibility with Arena Chess GUI
-        if (strcmp(value, "false") == 0) {
-            Par.DefaultWeights();  // Revert to default if user wants
-            printf("info string Tal Mode OFF - reverted to standard play\n");
-        } else {
-            Par.InitTalStyle();    // Ensure Tal style is active
-            printf("info string Tal Mode ON - Pure Mikhail Tal style!\n");
-        }
+        // Kept so Arena can list the option; this edition has no off switch.
+        // Any value, including false, leaves the Tal evaluation active.
+        Par.InitTalStyle();
+        printf("info string Tal Mode ON - Pure Mikhail Tal style!\n");
     }
 }

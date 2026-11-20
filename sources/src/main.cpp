@@ -92,8 +92,6 @@ int main() {
 	Par.use_book = true;
 	Par.verbose_book = false;
 
-    PrintVersion();
-
     PrintOverrides(); // print books and pers paths overrides (26/08/17: linux only)
 
     MainBook.SetBookName("ph-tal2.bin");

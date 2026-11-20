@@ -29,7 +29,7 @@ OpenTal is a UCI-compatible chess engine that plays in the style of Mikhail Tal,
    - `TalMode`: true (default) - Pure Tal style
    - `UseBook`: true (default) - Uses Tal's opening book
    - `Threads`: 1-8 (default 1)
-   - `Hash`: 16-4096 MB (default 16)
+   - `Hash`: 16-4096 MB (default 128)
 
 ## Compilation (Linux)
 
@@ -57,7 +57,7 @@ This engine embodies Mikhail Tal's famous style:
 |--------|---------|-------------|
 | `TalMode` | true | Pure Mikhail Tal style (always ON in this edition) |
 | `UseBook` | true | Use Tal's opening book (`ph-tal2.bin`) |
-| `Hash` | 16 | Hash table size in MB |
+| `Hash` | 128 | Hash table size in MB |
 | `Threads` | 1 | Number of search threads |
 | `MainBookFile` | ph-tal2.bin | Opening book file |
 

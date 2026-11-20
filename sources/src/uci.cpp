@@ -60,7 +60,7 @@ void UciLoop() {
     setbuf(stdin, NULL);
     setbuf(stdout, NULL);
     p->SetPosition(START_POS);
-    Trans.AllocTrans(16);
+    Trans.AllocTrans(128);
     for (;;) {
         ReadLine(command, sizeof(command));
         ptr = ParseToken(command, token);
