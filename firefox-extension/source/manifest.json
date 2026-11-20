@@ -1,0 +1,30 @@
+{
+  "manifest_version": 2,
+  "name": "OpenTal — Tal Move Overlay",
+  "version": "0.1.0",
+  "description": "Shows OpenTal's Tal-style best move on the Chess.com board. For bot games and unrated puzzles only.",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "opental@local",
+      "strict_min_version": "115.0"
+    }
+  },
+  "permissions": [
+    "nativeMessaging",
+    "storage",
+    "tabs",
+    "activeTab",
+    "https://www.chess.com/*"
+  ],
+  "background": {
+    "scripts": ["background/background.js"],
+    "persistent": true
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://www.chess.com/*"],
+      "js": ["content/board-detector.js", "content/overlay.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
