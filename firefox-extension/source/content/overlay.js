@@ -14,7 +14,7 @@
     talRandom: false,
     ponder: true,
     autoplay: false,
-    autoplaySide: 'both',
+    autoplaySide: 'auto',
     autoplayDelay: 300
   };
 
@@ -122,7 +122,7 @@
       </div>
       <div class="panel hidden" id="panel">
         <div class="title">OpenTal</div>
-        <div class="sub">Tal-style analysis. Bot games & puzzles only. Auto-play uses engine moves.</div>
+        <div class="sub">Tal-style analysis for your side. Bot games & puzzles only. Auto-play uses engine moves.</div>
 
         <div class="row">
           <div class="row-head"><span class="label">Search</span><span class="value" id="modeVal"></span></div>
@@ -163,9 +163,9 @@
         <div class="row" id="autoplaySideRow">
           <div class="row-head"><span class="label">Play as</span><span class="value" id="autoplaySideVal"></span></div>
           <div class="mode-switch">
+            <button class="mode-btn" id="sideAuto" type="button">Auto</button>
             <button class="mode-btn" id="sideWhite" type="button">White</button>
             <button class="mode-btn" id="sideBlack" type="button">Black</button>
-            <button class="mode-btn" id="sideBoth" type="button">Both</button>
           </div>
         </div>
         <div class="row" id="autoplayDelayRow">
@@ -313,6 +313,7 @@
   let outsideBound = false;
   let lastMoves = [];
   let lastTurn = null;
+  let lastPlayer = null;
   let lastFen = null;
   let lastAnalysis = null;
   let autoplayTimer = null;
@@ -367,11 +368,11 @@
     $('modeDepth').classList.toggle('active', isDepth);
     $('movetimeRow').classList.toggle('disabled', isDepth);
     $('depthRow').classList.toggle('disabled', !isDepth);
-    const side = settings.autoplaySide || 'both';
+    const side = ['white', 'black', 'auto'].includes(settings.autoplaySide) ? settings.autoplaySide : 'auto';
+    $('sideAuto').classList.toggle('active', side === 'auto');
     $('sideWhite').classList.toggle('active', side === 'white');
     $('sideBlack').classList.toggle('active', side === 'black');
-    $('sideBoth').classList.toggle('active', side === 'both');
-    $('autoplaySideVal').textContent = side === 'white' ? 'White' : (side === 'black' ? 'Black' : 'Both');
+    $('autoplaySideVal').textContent = side === 'white' ? 'White' : (side === 'black' ? 'Black' : 'Auto');
     const autoOn = !!settings.autoplay;
     $('autoplaySideRow').classList.toggle('disabled', !autoOn);
     $('autoplayDelayRow').classList.toggle('disabled', !autoOn);
@@ -390,7 +391,7 @@
       talRandom: $('talRandom').checked,
       ponder: $('ponder').checked,
       autoplay: $('autoplay').checked,
-      autoplaySide: settings.autoplaySide || 'both',
+      autoplaySide: ['white', 'black', 'auto'].includes(settings.autoplaySide) ? settings.autoplaySide : 'auto',
       autoplayDelay: Number($('autoplayDelay').value)
     };
   }
@@ -422,7 +423,12 @@
       syncForm();
       setStatus('Saved. Re-analysing…');
       const state = window.OpenTalBoard && window.OpenTalBoard.current ? window.OpenTalBoard.current() : null;
-      requestAnalysis(state);
+      if (shouldShowForTurn(lastTurn)) {
+        requestAnalysis(state);
+      } else {
+        clear();
+        if ($('badge')) $('badge').textContent = 'TAL — opponent to move';
+      }
       if (settings.autoplay && lastAnalysis) {
         setTimeout(() => { if (lastAnalysis) tryScheduleAutoplay(lastAnalysis); }, 0);
       } else if (!settings.autoplay) {
@@ -458,9 +464,9 @@
       $(id).addEventListener('change', () => queueAutoSave(null, 0));
     });
 
+    $('sideAuto').addEventListener('click', () => queueAutoSave({ autoplaySide: 'auto' }, 0));
     $('sideWhite').addEventListener('click', () => queueAutoSave({ autoplaySide: 'white' }, 0));
     $('sideBlack').addEventListener('click', () => queueAutoSave({ autoplaySide: 'black' }, 0));
-    $('sideBoth').addEventListener('click', () => queueAutoSave({ autoplaySide: 'both' }, 0));
 
     $('reset').addEventListener('click', () => {
       settings = Object.assign({}, DEFAULT_SETTINGS);
@@ -571,13 +577,25 @@
     return true;
   }
 
+  function resolvedPlayerSide() {
+    const side = ['white', 'black', 'auto'].includes(settings.autoplaySide) ? settings.autoplaySide : 'auto';
+    if (side === 'white') return 'w';
+    if (side === 'black') return 'b';
+    return (lastPlayer === 'w' || lastPlayer === 'b') ? lastPlayer : null;
+  }
+
+  function shouldShowForTurn(turn) {
+    const mine = resolvedPlayerSide();
+    if (!mine) return true; // unknown side -> keep previous behavior
+    return turn === mine;
+  }
+
   function shouldAutoplayForTurn(turn) {
     if (!settings.autoplay) return false;
-    const side = settings.autoplaySide || 'both';
-    if (side === 'both') return turn === 'w' || turn === 'b';
+    const side = ['white', 'black', 'auto'].includes(settings.autoplaySide) ? settings.autoplaySide : 'auto';
     if (side === 'white') return turn === 'w';
     if (side === 'black') return turn === 'b';
-    return false;
+    return !!lastPlayer && turn === lastPlayer; // auto: only when side is known
   }
 
   function cancelAutoplay(reason) {
@@ -661,6 +679,15 @@
     window.OpenTalDebug.lastResult = result;
     lastAnalysis = result || null;
     clear();
+
+    if (!shouldShowForTurn(lastTurn)) {
+      $('badge').textContent = 'TAL — opponent to move';
+      cancelAutoplay('not-my-turn');
+      setStatus(panelOpen ? 'Waiting for your turn…' : $('status').textContent);
+      place();
+      return;
+    }
+
     const best = result && result.bestmove != null ? String(result.bestmove) : '';
     const hasLines = result && Array.isArray(result.lines) && result.lines.length > 0;
     const candidates = hasLines ? result.lines.slice(0, 3) : (best ? [{ move: best, score: result.score, mate: result.mate }] : []);
@@ -738,6 +765,7 @@
     revision = state.revision;
     flipped = !!state.flipped;
     lastTurn = state.turn || (state.fen ? state.fen.split(' ')[1] : null);
+    lastPlayer = state.player || ((state.flipped === true) ? 'b' : ((state.flipped === false) ? 'w' : lastPlayer));
     lastFen = state.fen || null;
     lastMoves = Array.isArray(state.moves) ? state.moves.slice() : [];
     lastAnalysis = null;
@@ -750,10 +778,16 @@
     window.OpenTalDebug = window.OpenTalDebug || {};
     window.OpenTalDebug.lastSentFen = state.fen;
     window.OpenTalDebug.lastMoves = lastMoves.slice();
+    window.OpenTalDebug.lastPlayer = lastPlayer;
     window.OpenTalDebug.lastState = state;
-    console.log('[OpenTal] analyse', state.source, state.turn, state.flipped, state.fen, lastMoves.length);
+    console.log('[OpenTal] state', state.source, 'turn', state.turn, 'player', lastPlayer, 'flipped', state.flipped, state.fen, 'moves', lastMoves.length);
     place();
-    requestAnalysis(state);
+    if (!shouldShowForTurn(lastTurn)) {
+      $('badge').textContent = 'TAL — opponent to move';
+      setStatus(panelOpen ? 'Waiting for your turn…' : '');
+    } else {
+      requestAnalysis(state);
+    }
     browser.runtime.sendMessage({
       type: 'gameState',
       fen: state.fen,

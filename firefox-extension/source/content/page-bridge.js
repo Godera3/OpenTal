@@ -81,6 +81,67 @@
     return null;
   }
 
+  function readPlayerColor(game, flipped) {
+    const tryColor = (value) => {
+      if (value == null) return null;
+      if (typeof value === 'object') {
+        if ('color' in value) return tryColor(value.color);
+        if ('playingAs' in value) return tryColor(value.playingAs);
+      }
+      const n = normalizeTurn(value);
+      if (n) return n;
+      const s = String(value).toLowerCase();
+      if (s === 'white') return 'w';
+      if (s === 'black') return 'b';
+      return null;
+    };
+
+    const sources = [game];
+    try {
+      if (window.chessboard && typeof window.chessboard.getRelationship === 'function') {
+        const rel = window.chessboard.getRelationship();
+        if (rel) sources.push(rel, rel.game);
+      }
+    } catch (error) { /* ignore */ }
+    try {
+      const board = findBoardElement();
+      if (board && board.game) sources.push(board.game);
+    } catch (error) { /* ignore */ }
+
+    const methods = [
+      'getPlayingAs', 'getPlayingAsColor', 'getPlayerColor', 'getMyColor',
+      'getUserColor', 'getPerspective', 'getOrientation', 'getBottomColor',
+      'getBottomPlayerColor', 'getSide', 'getColor'
+    ];
+    const props = [
+      'playingAs', 'playingAsColor', 'playerColor', 'myColor', 'userColor',
+      'perspective', 'orientation', 'bottomColor', 'side', 'color'
+    ];
+
+    for (const src of sources) {
+      if (!src) continue;
+      for (const name of methods) {
+        try {
+          if (typeof src[name] === 'function') {
+            const c = tryColor(src[name]());
+            if (c) return c;
+          }
+        } catch (error) { /* ignore */ }
+      }
+      for (const name of props) {
+        try {
+          const c = tryColor(src[name]);
+          if (c) return c;
+        } catch (error) { /* ignore */ }
+      }
+    }
+
+    // Fallback: in bot games/puzzles board is usually oriented with the player at bottom.
+    if (flipped === true) return 'b';
+    if (flipped === false) return 'w';
+    return null;
+  }
+
   let lastEmitted = '';
   let dragging = false;
 
@@ -92,14 +153,16 @@
     const turn = readTurn(game);
     if (turn) fen = applyTurnToFen(fen, turn);
     const flipped = readFlipped(game);
-    const payload = fen + '|' + (flipped === null ? '' : String(flipped)) + '|' + (turn || '');
+    const player = readPlayerColor(game, flipped);
+    const payload = fen + '|' + (flipped === null ? '' : String(flipped)) + '|' + (turn || '') + '|' + (player || '');
     if (!force && payload === lastEmitted) return;
     lastEmitted = payload;
     window.postMessage({
       source: 'opental-bridge',
       fen,
       flipped,
-      turn
+      turn,
+      player
     }, '*');
   }
 

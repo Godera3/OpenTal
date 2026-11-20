@@ -13,7 +13,7 @@ const DEFAULT_SETTINGS = {
   talRandom: false,
   ponder: true,
   autoplay: false,
-  autoplaySide: 'both',
+  autoplaySide: 'auto',
   autoplayDelay: 300
 };
 
@@ -38,7 +38,8 @@ function sanitizeSettings(input) {
   };
   const bool = (value, fallback) => typeof value === 'boolean' ? value : fallback;
   const mode = source.searchMode === 'depth' ? 'depth' : 'time';
-  const side = ['white', 'black', 'both'].includes(source.autoplaySide) ? source.autoplaySide : DEFAULT_SETTINGS.autoplaySide;
+  const rawSide = source.autoplaySide === 'both' ? 'auto' : source.autoplaySide;
+  const side = ['white', 'black', 'auto'].includes(rawSide) ? rawSide : DEFAULT_SETTINGS.autoplaySide;
   return {
     searchMode: mode,
     movetime: clamp(source.movetime, 50, 10000, DEFAULT_SETTINGS.movetime),

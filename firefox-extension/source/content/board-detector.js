@@ -30,7 +30,8 @@
       bridgeState = {
         fen: event.data.fen,
         flipped: typeof event.data.flipped === 'boolean' ? event.data.flipped : null,
-        turn: typeof event.data.turn === 'string' ? event.data.turn : null
+        turn: typeof event.data.turn === 'string' ? event.data.turn : null,
+        player: typeof event.data.player === 'string' ? event.data.player : null
       };
     }
   });
@@ -275,7 +276,8 @@
       ? bridgeState.flipped
       : domFlipped();
     const turn = bridgeState && bridgeState.turn ? bridgeState.turn : (fen.split(' ')[1] || null);
-    return { fen, flipped, board, revision, turn, moves: moveHistory.slice(), source: fromBridge() ? 'bridge' : (fromSiteApi() ? 'api' : 'dom') };
+    const player = bridgeState && bridgeState.player ? bridgeState.player : (flipped === true ? 'b' : 'w');
+    return { fen, flipped, board, revision, turn, player, moves: moveHistory.slice(), source: fromBridge() ? 'bridge' : (fromSiteApi() ? 'api' : 'dom') };
   }
 
   function tick(force) {
@@ -288,7 +290,8 @@
         ? bridgeState.flipped
         : domFlipped();
       const turn = bridgeState && bridgeState.turn ? bridgeState.turn : (fen.split(' ')[1] || null);
-      return { fen, flipped, board, revision, turn, source: fromBridge() ? 'bridge' : (fromSiteApi() ? 'api' : 'dom') };
+      const player = bridgeState && bridgeState.player ? bridgeState.player : (flipped === true ? 'b' : 'w');
+      return { fen, flipped, board, revision, turn, player, source: fromBridge() ? 'bridge' : (fromSiteApi() ? 'api' : 'dom') };
     })();
     if (!stateWithoutMoves || stateWithoutMoves.fen === lastFen) return;
     updateMoveHistory(lastFen, stateWithoutMoves.fen);
