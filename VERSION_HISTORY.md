@@ -226,3 +226,28 @@ The follow-up and liquidation gaps narrowed and sac frequency moved toward
 Tal's row; check frequency moved away from it. That trade is recorded rather
 than hidden. The weak-engine floor holds (4.5/6 vs AICE); the v1 head-to-head
 went 4.5/10 → 3.5/10 in another small sample.
+
+## The decisive specimen sacs: not a defect
+
+The specimen's `18.Qxg6+` and `21.Rxe7+` were never reproduced. That is
+intentional, not an unfinished style gap. `tal_specimen_probe.py` now prints an
+objective verdict for every Tal sac (Stockfish 10, depth 14, score from the sac
+side):
+
+| Tal sac | Stockfish verdict | Post-sac score |
+|---|---|---|
+| 13.Bxd5 | prefers e4 | −665 |
+| 16.Nxd5 | **best move** | −791 |
+| 17...Rxh4 | **best move** | +839 |
+| 18.Qxg6+ | prefers Qg2 | −2190 (−7086 at depth 18) |
+| 20...Rxh3 | **best move** | won (mate) |
+| 21.Rxe7+ | prefers f4 | lost (mate in 5) |
+
+Three sacs are objectively best and the engine already agrees with two of them.
+`13.Bxd5` costs about 85cp at depth 16 — a defensible speculative sac, but
+OpenTal's `e4` is sounder. The queen sac was a blunder that happened to work
+because the human resigned; forcing it would be the blind donation this engine
+is explicitly not supposed to make. Raising `W_FOREST` from 140 to 180/220 was
+tested as a sound alternative: it moved specimen agreement by at most one ply
+and destabilised the style metrics, so it was reverted. Agreement is 17/41
+plies; the remaining mismatches are sound opening choices, not missing Tal.

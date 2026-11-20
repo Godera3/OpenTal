@@ -81,6 +81,75 @@ def material_diff(board):
                          len(board.pieces(t, chess.BLACK))) for t in VAL)
 
 
+class Stockfish:
+    """Objective verdicts, so a lost sac is not mistaken for a missed style move."""
+
+    def __init__(self, depth=14):
+        path = os.path.expanduser(
+            "~/.arena_linux/Engines/Stockfish/stockfish_10_x64_modern_official")
+        self.depth = depth
+        self.proc = None
+        if os.path.exists(path):
+            self.proc = subprocess.Popen(
+                [path], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                stderr=subprocess.DEVNULL, text=True, bufsize=1,
+                cwd=os.path.dirname(path))
+            self.cmd("uci")
+            while not self.cmd_wait("uciok"):
+                pass
+
+    def cmd(self, text):
+        self.proc.stdin.write(text + "\n")
+        self.proc.stdin.flush()
+
+    def cmd_wait(self, prefix):
+        while True:
+            line = self.proc.stdout.readline()
+            if not line:
+                return False
+            if line.startswith(prefix):
+                return True
+
+    def search(self, fen):
+        self.cmd("position fen " + fen)
+        self.cmd("go depth %d" % self.depth)
+        best = score = None
+        while True:
+            line = self.proc.stdout.readline()
+            if line.startswith("info") and " pv " in line:
+                try:
+                    if "score cp " in line:
+                        score = int(line.split("score cp ")[1].split()[0])
+                    elif "score mate " in line:
+                        mate = int(line.split("score mate ")[1].split()[0])
+                        score = (10000 - abs(mate) * 100) * (1 if mate > 0 else -1)
+                    else:
+                        continue
+                    best = line.split(" pv ")[1].split()[0]
+                except (ValueError, IndexError):
+                    pass
+            if line.startswith("bestmove"):
+                if best is None:
+                    best = line.split()[1]
+                return best, score
+
+    def verdict(self, fen, uci):
+        best, score = self.search(fen)
+        board = chess.Board(fen)
+        board.push_uci(uci)
+        tal_best, tal_score = self.search(board.fen())
+        # The reply search is scored for the defender; flip it for the sac side.
+        return best, score, None if tal_score is None else -tal_score
+
+    def close(self):
+        if self.proc:
+            self.cmd("quit")
+            try:
+                self.proc.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                self.proc.kill()
+
+
 def main():
     with open(SPECIMEN, encoding="utf-8") as f:
         game = chess.pgn.read_game(f)
@@ -113,7 +182,7 @@ def main():
         attacker = b.piece_type_at(move.from_square)
         is_sac = victim is not None and VAL[attacker] > VAL[victim] + 100
         if is_sac:
-            sacs.append((i + 1, b.san(move)))
+            sacs.append((i + 1, b.san(move), fen, uci))
         note = "SAC" if is_sac else ""
         if side == "W" and not ok:
             note = (note + " KEY").strip()
@@ -124,41 +193,23 @@ def main():
 
     print("\nAgreement with Tal: %d/%d plies (%.0f%%)" %
           (agrees, len(moves), 100.0 * agrees / len(moves)))
-    print("Tal's sacrifices:", ", ".join("%d.%s" % (n, m) for n, m in sacs))
+    print("Tal's sacrifices:", ", ".join("%d.%s" % (n, m) for n, m, _, _ in sacs))
 
-    # Objective verdict on the queen-sacrifice position (after 18...fxg6).
-    qfen = played[35][0]  # ply 36 = 18...fxg6, White to move
-    board = chess.Board(qfen)
-    board.push_uci(played[35][1])
-    post = board.fen()
-    sf = os.path.expanduser(
-        "~/.arena_linux/Engines/Stockfish/stockfish_10_x64_modern_official")
-    if os.path.exists(sf):
-        p = subprocess.Popen(
-            [sf], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-            stderr=subprocess.DEVNULL, text=True, bufsize=1,
-            cwd=os.path.dirname(sf))
-        p.stdin.write("uci\n")
-        p.stdin.flush()
-        while True:
-            if p.stdout.readline().startswith("uciok"):
-                break
-        p.stdin.write("position fen " + post + "\n")
-        p.stdin.write("go depth 18\n")
-        p.stdin.flush()
-        last = ""
-        while True:
-            line = p.stdout.readline()
-            if line.startswith("info") and "score" in line:
-                last = line.strip()
-            if line.startswith("bestmove"):
-                break
-        p.stdin.write("quit\n")
-        p.stdin.flush()
-        p.wait(timeout=5)
-        score = last.split("score cp ")[1].split()[0] if "score cp " in last else "?"
-        print("\nAfter the queen sac, Stockfish depth 18: %s cp "
-              "(negative = objectively lost)" % score)
+    print("\nTal sacrifice          Stockfish verdict (score for the sac side)")
+    sf = Stockfish()
+    for n, san, fen, uci in sacs:
+        if not sf.proc:
+            break
+        best, score, tal_score = sf.verdict(fen, uci)
+        board = chess.Board(fen)
+        best_san = board.san(chess.Move.from_uci(best))
+        fmt = lambda v: "?" if v is None else "%+d" % v
+        verdict = "BEST" if best == uci else "prefers %s" % best_san
+        print("%3d.%-8s  %-14s pre %s / post %s" %
+              (n, san, verdict, fmt(score), fmt(tal_score)))
+    sf.close()
+    print("A lost sac is not a missed style move: those are deliberately not")
+    print("reproduced. See VERSION_HISTORY.md for the soundness analysis.")
 
 
 if __name__ == "__main__":

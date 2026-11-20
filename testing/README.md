@@ -75,17 +75,17 @@ metric drifts away from Tal's row.
 the sharpest style specimen in the set: Tal stacks four sacrifices, then plays
 `18.Qxg6+!!`, hunts the king, and wins after `21.Rxe7+`.
 
-`tal_specimen_probe.py` replays it and reports where OpenTal agrees with Tal at
-depth 5, plus the objective engine verdict on the queen sac:
+`tal_specimen_probe.py` replays it, reports where OpenTal agrees with Tal at
+depth 5, and prints Stockfish's verdict on every Tal sac:
 
     PYTHONPATH=/tmp/opencode/chesslib python3 testing/tal_specimen_probe.py
 
-Current result: OpenTal matches 16/41 plies. It finds the small sacrifices
-(`Bxd5`, `Nxd5`, `Rxh4`, `Rxh3`) but refuses the decisive ones (`Qxg6+`,
-`Rxe7+`) because its attack compensation is gated on owning a queen and capped
-at 300 cp. Stockfish scores the post-sac position around -7100 cp: the sac was
-objectively lost and worked only because the human resigned. That is the
-style-vs-soundness tradeoff this probe exists to make visible.
+Current result: OpenTal matches 17/41 plies. Stockfish calls `16.Nxd5`,
+`17...Rxh4` and `20...Rxh3` best moves; it prefers a quiet move to `13.Bxd5`
+and `21.Rxe7+`, and scores `18.Qxg6+` as lost (−2190 at depth 14, −7086 at depth
+18). The engine agrees with two of the three sound sacs and refuses the two
+lost ones. That refusal is the style-vs-soundness boundary this probe exists to
+make visible, not a gap to tune away.
 
 ## Comparing the two engines
 
@@ -97,8 +97,7 @@ which is what answers "which one is more Tal":
 
 `--opponent` accepts any engine from the match runner; `--old-as-a` puts v1 in
 v2's seat so both engines can be measured against the same stable opponent.
-Results at depth 6: v2 beats v1 6/10 and AICE 6/6; against Stockfish v2 scores
-1.5/6 with 6.50 checks/g against Tal's 3.57. The doubled check-threat bonuses
-were the cause, and returning them to base values brought checks to 3.33/g and
-raised the Stockfish score to 3/6. See `VERSION_HISTORY.md` for the full table
-and the honest regressions.
+Latest depth-6 results: v2 scores 3.5/10 against v1 and 4.5/6 against AICE,
+so the weak-engine floor holds. Earlier builds scored 6/10 and 6/6 before the
+check-spam and desperado-sac fixes; those trades are recorded in
+`VERSION_HISTORY.md`. Style is the scoreboard here, not the result column.
