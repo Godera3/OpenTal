@@ -429,3 +429,29 @@ per game between builds, none of these single-lever results is strong enough
 to replace the W_HUNT build. The remaining ~18% is not a missing idea but a
 ceiling: Tal's sacs were selected for their follow-up, and the engine has no
 cheap way to select for that without paying for it in check volume.
+
+## Storms and captures: opponent-driven, and another budget trade (2026-11-20)
+
+The two weak supporting columns were attacked next. Tal from ply 16 makes
+8.32 captures and 1.84 storms per game; the engine makes 6.19 and 1.31.
+
+The capture gap is mostly the opponent. Stockfish makes 11.75 captures per
+game against OpenTal, while Tal's real opponents made only 7.89 against him —
+the engine is on the receiving end of material grabs, so its own capture count
+cannot match Tal's without a different opponent. OpenTal recaptures 17% of
+those captures against Tal's 31%, but zeroing `W_INITIATIVE` and `W_HUNT`
+left the recapture rate at 16% and *lowered* captures to 5.58: the
+deficit-based bonuses are not what makes it decline recaptures.
+
+The storm term already pays the maximum: `P_ST_3` and `P_ST_4` are clamped at
+−50 and `W_STORM` is 250, so raising the weight to 350 made storms fall to
+1.19. A new bounded term that paid for our own advanced pawns only while a
+hunt was on gave the one consistent capture gain found — two independent
+position sets (ply 16 and ply 18): captures 6.19 → 6.75 and 6.56 → 7.44 —
+but sacs fell 2.06 → 1.62 and 1.88 → 1.69, while storms and follow-up moved
+in opposite directions between the two sets. Adding `W_HUNT` 130 to restore
+the sacs collapsed follow-up to 21%/32%. The term was reverted.
+
+So the pattern from the depth-7 investigation repeats: the only lever that
+raises captures takes sacs away. No engine change was kept; code remains at
+`ccc99ca`.
