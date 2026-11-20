@@ -17,10 +17,10 @@ Host to extension:
 
 | type | fields | meaning |
 |------|--------|---------|
-| `ready` | `engine`, `evalEngine?`, `host` | UCI handshake complete |
+| `ready` | `engine`, `host` | UCI handshake complete |
 | `pong` | `engine` | response to `ping` |
-| `analysis` | `id`, `bestmove`, `score`, `mate`, `lines`, `depth`, `evalScore?`, `evalMate?`, `evalEngine?` | search result |
-| `configured` | `engine`, `evalEngine?`, `options`, `movetime`, `depth`, `searchMode` | settings applied |
+| `analysis` | `id`, `bestmove`, `score`, `mate`, `lines`, `depth` | search result |
+| `configured` | `engine`, `options`, `movetime`, `depth`, `searchMode` | settings applied |
 | `error` | `id?`, `message` | bad request or engine failure |
 
 `fen` is a full UCI FEN string or `startpos`. `moves` is an array of UCI moves
@@ -33,12 +33,9 @@ mode it runs `go depth <n>` (`depth` clamped to 1–30).
 `TalMode`, `TalRandom` (booleans). Unknown names or out-of-range values are
 rejected.
 
-`score`/`mate` and `lines` describe Tal's chosen move(s) (arrows/chips). When an
-evaluation engine is available (e.g. Stockfish), `evalScore`/`evalMate` and
-`evalEngine` provide an objective evaluation of the position for the eval bar;
-otherwise the bar falls back to Tal's evaluation. All scores are centipawns from
-the side to move and mates are signed distances. `lines` is an array of up to
-three objects `{ "move": "e2e4", "pv": ["e2e4", "e7e5"], "score": 35, "mate": null }`.
+`score` is centipawns from the side to move. `mate` is the signed mate distance
+when present, otherwise `null`. `lines` is an array of up to three objects
+`{ "move": "e2e4", "pv": ["e2e4", "e7e5"], "score": 35, "mate": null }`.
 
 The host keeps one OpenTal process alive. A new `analyse` or `configure`
 supersedes any search in flight: the host sends UCI `stop`, drops stale

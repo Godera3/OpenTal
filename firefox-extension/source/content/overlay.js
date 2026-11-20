@@ -18,43 +18,16 @@
   const MARKUP = `
     <style>
       :host { all: initial; }
-      .wrap { position: absolute; inset: 0; overflow: visible; font-family: "Inter", "Segoe UI", system-ui, sans-serif; }
+      .wrap { position: absolute; inset: 0; font-family: "Inter", "Segoe UI", system-ui, sans-serif; }
       svg.board { display: block; width: 100%; height: 100%; overflow: visible; }
       .pv-arrow { stroke-linecap: round; filter: drop-shadow(0 0 0.08px rgba(0,0,0,0.6)); }
       .pv1 { stroke: #60a5fa; stroke-width: 0.14; opacity: 0.95; }
       .pv2 { stroke: #ffd166; stroke-width: 0.11; opacity: 0.78; }
       .pv3 { stroke: #c4b5fd; stroke-width: 0.11; opacity: 0.78; }
-      .evalbar {
-        position: absolute; left: -28px; top: 0; bottom: 0; width: 16px;
-        border-radius: 8px; overflow: hidden; pointer-events: none; z-index: 3;
-        background: linear-gradient(180deg, #2b2c33 0%, #14151b 100%);
-        border: 1px solid rgba(255,255,255,0.18);
-        box-shadow: 0 10px 28px rgba(0,0,0,0.45), inset 0 0 0 1px rgba(255,255,255,0.04);
-      }
-      .eval-fill {
-        position: absolute; left: 0; right: 0; bottom: 0; height: 50%;
-        background: linear-gradient(180deg, #ffffff 0%, #e6e9f0 55%, #d8dde8 100%);
-        box-shadow: inset 0 1px 0 rgba(255,255,255,0.8);
-        transition: height .35s cubic-bezier(.22,.8,.24,1), top .35s cubic-bezier(.22,.8,.24,1), bottom .35s cubic-bezier(.22,.8,.24,1);
-      }
-      .eval-mid {
-        position: absolute; left: 2px; right: 2px; top: 50%; height: 2px; border-radius: 2px;
-        background: rgba(255,209,102,0.55); transform: translateY(-1px);
-        z-index: 2;
-      }
-      .eval-text {
-        position: absolute; left: -36px; bottom: -22px; width: 32px; text-align: center;
-        padding: 3px 0; border-radius: 7px; pointer-events: none; z-index: 3;
-        font: 700 10px/1.1 ui-monospace, SFMono-Regular, monospace;
-        color: #f7f4ea; background: rgba(12,12,16,0.88);
-        border: 1px solid rgba(255,209,102,0.22);
-        box-shadow: 0 6px 16px rgba(0,0,0,0.35);
-        white-space: nowrap;
-      }
       .topbar {
         position: absolute; top: 6px; left: 6px; right: 6px;
         display: flex; align-items: flex-start; justify-content: space-between; gap: 8px;
-        pointer-events: none; z-index: 4;
+        pointer-events: none;
       }
       .left { display: flex; flex-direction: column; gap: 4px; max-width: calc(100% - 44px); }
       .badge, .gear, .chip {
@@ -77,9 +50,9 @@
         padding: 3px 8px; border-radius: 999px;
         font: 600 11px/1.2 ui-monospace, SFMono-Regular, monospace;
       }
-      .chip.pv1 { border-color: rgba(96,165,250,0.4); color: #60a5fa; }
-      .chip.pv2 { border-color: rgba(255,209,102,0.4); color: #ffd166; }
-      .chip.pv3 { border-color: rgba(196,181,253,0.4); color: #c4b5fd; }
+      .chip.pv1 { border-color: rgba(96,165,250,0.35); color: #60a5fa; }
+      .chip.pv2 { border-color: rgba(255,209,102,0.35); color: #ffd166; }
+      .chip.pv3 { border-color: rgba(196,181,253,0.35); color: #c4b5fd; }
       .gear {
         width: 30px; height: 30px; border-radius: 10px; cursor: pointer; flex: 0 0 auto;
         display: grid; place-items: center; font-size: 15px; transition: transform .15s ease, background .15s ease;
@@ -130,8 +103,6 @@
       .status { margin-top: 8px; min-height: 14px; font: 500 11px/1.3 system-ui, sans-serif; color: rgba(243,239,230,0.7); }
     </style>
     <div class="wrap">
-      <div class="evalbar" id="evalbar"><div class="eval-fill" id="evalFill"></div><div class="eval-mid"></div></div>
-      <div class="eval-text" id="evalText">0.0</div>
       <svg class="board" viewBox="0 0 8 8" preserveAspectRatio="none">
         <defs>
           <marker id="head-pv1" viewBox="0 0 3 3" markerWidth="3" markerHeight="3" refX="2.2" refY="1.5" orient="auto"><path d="M0,0 L3,1.5 L0,3 Z" fill="#60a5fa"></path></marker>
@@ -198,10 +169,8 @@
   let shadow = null;
   let flipped = false;
   let revision = -1;
-  let sideToMove = 'w';
   let settings = Object.assign({}, DEFAULT_SETTINGS);
   let panelOpen = false;
-  let lastEval = null; // { score, mate } in side-to-move perspective, or null
 
   function ensureHost() {
     if (host && host.isConnected) return;
@@ -348,52 +317,6 @@
     return 'book';
   }
 
-  function evalToWhite(evalData) {
-    if (!evalData) return null;
-    if (evalData.book) return { type: 'book' };
-    if (evalData.mate != null) {
-      return { type: 'mate', value: (sideToMove === 'w' ? evalData.mate : -evalData.mate) };
-    }
-    if (evalData.score != null) {
-      return { type: 'cp', value: (sideToMove === 'w' ? evalData.score : -evalData.score) };
-    }
-    return null;
-  }
-
-  function renderEval() {
-    if (!shadow) return;
-    const fill = $('evalFill');
-    const text = $('evalText');
-    if (!fill || !text) return;
-    const white = evalToWhite(lastEval);
-    let pct = 50;
-    let label = '…';
-    if (white && white.type === 'mate') {
-      pct = white.value > 0 ? 100 : 0;
-      label = (white.value > 0 ? 'M' : '-M') + Math.abs(white.value);
-    } else if (white && white.type === 'cp') {
-      const cp = white.value;
-      pct = 50 + 50 * (2 / (1 + Math.exp(-0.00368208 * cp)) - 1);
-      pct = Math.max(2, Math.min(98, pct));
-      const pawns = cp / 100;
-      label = (pawns >= 0 ? '+' : '') + pawns.toFixed(1);
-    } else if (white && white.type === 'book') {
-      label = 'book';
-      pct = 50;
-    }
-    const whiteOnBottom = !flipped;
-    if (whiteOnBottom) {
-      fill.style.bottom = '0';
-      fill.style.top = 'auto';
-      fill.style.height = pct + '%';
-    } else {
-      fill.style.top = '0';
-      fill.style.bottom = 'auto';
-      fill.style.height = pct + '%';
-    }
-    text.textContent = label;
-  }
-
   function clear() {
     if (!shadow) return;
     const arrows = $('arrows');
@@ -432,15 +355,11 @@
     clear();
     const best = result && result.bestmove != null ? String(result.bestmove) : '';
     const hasLines = result && Array.isArray(result.lines) && result.lines.length > 0;
-    const candidates = hasLines
-      ? result.lines.filter((line) => line && /^([a-h][1-8])([a-h][1-8])([qrbn])?$/.test(line.move || '')).slice(0, 3)
-      : (best ? [{ move: best, score: result.score, mate: result.mate }] : []);
+    const candidates = hasLines ? result.lines.slice(0, 3) : (best ? [{ move: best, score: result.score, mate: result.mate }] : []);
 
     if (!candidates.length || !/^([a-h][1-8])([a-h][1-8])/.test(candidates[0].move || best)) {
       const shown = best ? best : '(empty)';
       $('badge').textContent = 'TAL — NO MOVE [' + shown + ']';
-      lastEval = null;
-      renderEval();
       place();
       return;
     }
@@ -454,24 +373,12 @@
 
     const top = candidates[0];
     $('badge').textContent = 'TAL ' + top.move + ' · ' + formatScore(top);
-    const hasEval = result && (result.evalScore != null || result.evalMate != null);
-    if (hasEval) {
-      lastEval = { score: result.evalScore, mate: result.evalMate, engine: result.evalEngine || 'Stockfish' };
-    } else if (top.score == null && top.mate == null) {
-      lastEval = { book: true };
-    } else {
-      lastEval = { score: top.score, mate: top.mate };
-    }
-    renderEval();
 
-    const linesToShow = hasLines ? candidates : (candidates.length > 1 ? candidates : []);
-    if (linesToShow.length > 1) {
-      linesToShow.forEach((line, index) => {
+    if (candidates.length > 1) {
+      candidates.forEach((line, index) => {
         const chip = document.createElement('span');
         chip.className = 'chip pv' + (index + 1);
-        const pv = Array.isArray(line.pv) ? line.pv.slice(0, 3).join(' ') : '';
-        chip.textContent = (index + 1) + '. ' + line.move + ' ' + formatScore(line) + (pv ? '  ' + pv : '');
-        chip.title = Array.isArray(line.pv) ? line.pv.join(' ') : line.move;
+        chip.textContent = (index + 1) + '. ' + line.move + ' ' + formatScore(line);
         lineBox.appendChild(chip);
       });
       lineBox.classList.remove('hidden');
@@ -484,9 +391,6 @@
   function requestAnalysis(state) {
     if (!state || !state.fen) return;
     ensureHost();
-    sideToMove = state.turn || (state.fen ? state.fen.split(' ')[1] : sideToMove) || 'w';
-    lastEval = null;
-    renderEval();
     $('badge').textContent = 'TAL …';
     browser.runtime.sendMessage({
       type: 'analyse',
@@ -508,8 +412,6 @@
       console.log('[OpenTal] error', msg);
       ensureHost();
       clear();
-      lastEval = null;
-      renderEval();
       $('badge').textContent = 'TAL — ' + (msg.message || 'error').slice(0, 48);
     }
   });
@@ -517,11 +419,8 @@
   window.OpenTalBoard.start((state) => {
     revision = state.revision;
     flipped = !!state.flipped;
-    sideToMove = state.turn || (state.fen ? state.fen.split(' ')[1] : 'w') || 'w';
     clear();
     ensureHost();
-    lastEval = null;
-    renderEval();
     window.OpenTalDebug = window.OpenTalDebug || {};
     window.OpenTalDebug.lastSentFen = state.fen;
     window.OpenTalDebug.lastState = state;
