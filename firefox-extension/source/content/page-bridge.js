@@ -114,15 +114,22 @@
     };
   }
 
-  function dispatchPointer(el, type, x, y) {
+  function dispatchPointer(el, type, x, y, buttons) {
     if (!el) return;
-    const opts = { bubbles: true, cancelable: true, clientX: x, clientY: y, view: window };
-    try { if (typeof PointerEvent === 'function') el.dispatchEvent(new PointerEvent(type, Object.assign({}, opts, { pointerType: 'mouse', isPrimary: true, button: 0, buttons: type === 'pointerup' ? 0 : 1 }))); } catch (e) {}
+    const btns = buttons != null ? buttons : (type === 'pointerup' ? 0 : 1);
+    const opts = { bubbles: true, cancelable: true, composed: true, clientX: x, clientY: y, view: window, button: 0, buttons: btns };
+    try {
+      if (typeof PointerEvent === 'function') {
+        el.dispatchEvent(new PointerEvent(type, Object.assign({}, opts, { pointerType: 'mouse', isPrimary: true, pointerId: 1 })));
+      }
+    } catch (e) {}
     const mouseType = type === 'pointerdown' ? 'mousedown' : (type === 'pointerup' ? 'mouseup' : (type === 'pointermove' ? 'mousemove' : 'click'));
-    try { el.dispatchEvent(new MouseEvent(mouseType, opts)); } catch (e) {}
+    try { el.dispatchEvent(new MouseEvent(mouseType, Object.assign({}, opts))); } catch (e) {}
   }
 
-  function tryClickMove(uci, promotion) {
+  function sleep(ms) { return new Promise((resolve) => setTimeout(resolve, ms)); }
+
+  async function tryClickMove(uci, promotion) {
     const board = findBoardElement();
     if (!board) return false;
     const rect = board.getBoundingClientRect();
@@ -133,30 +140,51 @@
     const to = uci.slice(2, 4);
     const fromPt = squareClientPoint(from, !!flipped, rect);
     const toPt = squareClientPoint(to, !!flipped, rect);
+
     const fromEl = document.elementFromPoint(fromPt.x, fromPt.y) || board;
+    dispatchPointer(fromEl, 'pointerdown', fromPt.x, fromPt.y, 1);
+    dispatchPointer(board, 'pointerdown', fromPt.x, fromPt.y, 1);
+    dispatchPointer(fromEl, 'pointermove', fromPt.x, fromPt.y, 1);
+    await sleep(30);
+    const midX = (fromPt.x + toPt.x) / 2;
+    const midY = (fromPt.y + toPt.y) / 2;
+    dispatchPointer(board, 'pointermove', midX, midY, 1);
+    await sleep(30);
+    dispatchPointer(board, 'pointermove', toPt.x, toPt.y, 1);
     const toEl = document.elementFromPoint(toPt.x, toPt.y) || board;
-    dispatchPointer(fromEl, 'pointerdown', fromPt.x, fromPt.y);
-    dispatchPointer(fromEl, 'click', fromPt.x, fromPt.y);
-    setTimeout(() => {
-      dispatchPointer(toEl, 'pointerup', toPt.x, toPt.y);
-      dispatchPointer(toEl, 'click', toPt.x, toPt.y);
-      if (uci.length >= 5) {
-        // best-effort: try clicking promotion piece by letter in common UIs
-        setTimeout(() => {
-          const wanted = (promotion || 'q').toLowerCase();
-          const promo = document.querySelector('[data-piece*="' + wanted + '"], [class*="promotion"][class*="' + wanted + '"], .promotion-piece.' + wanted);
-          if (promo) {
-            try { promo.click(); } catch (e) {}
-          }
-        }, 80);
+    dispatchPointer(toEl, 'pointerup', toPt.x, toPt.y, 0);
+    dispatchPointer(board, 'pointerup', toPt.x, toPt.y, 0);
+    await sleep(20);
+    // click fallback sequence for boards that expect clicks
+    dispatchPointer(fromEl, 'click', fromPt.x, fromPt.y, 0);
+    await sleep(50);
+    const toEl2 = document.elementFromPoint(toPt.x, toPt.y) || board;
+    dispatchPointer(toEl2, 'click', toPt.x, toPt.y, 0);
+
+    if (uci.length >= 5) {
+      await sleep(120);
+      const wanted = (promotion || 'q').toLowerCase();
+      const selectors = [
+        '[data-piece="' + wanted + '"]',
+        '[data-piece="w' + wanted + '"]',
+        '[data-piece="b' + wanted + '"]',
+        '.promotion-piece.' + wanted,
+        '.promotion-piece[class*="' + wanted + '"]',
+        'div[class*="promotion"] [class*="' + wanted + '"]'
+      ];
+      for (const sel of selectors) {
+        try {
+          const promo = document.querySelector(sel);
+          if (promo) { promo.click(); break; }
+        } catch (e) {}
       }
-    }, 40);
+    }
     return true;
   }
 
-  function tryPlayMove(uci) {
+  async function tryApiMove(uci, fenBefore) {
     const match = /^([a-h][1-8])([a-h][1-8])([qrbn])?$/.exec(String(uci || ''));
-    if (!match) return { ok: false, reason: 'bad-move' };
+    if (!match) return false;
     const from = match[1];
     const to = match[2];
     const promotion = (match[3] || 'q').toLowerCase();
@@ -164,44 +192,71 @@
     const board = findBoardElement();
 
     const attempts = [];
-    if (game) {
-      if (typeof game.move === 'function') {
-        attempts.push(() => game.move({ from, to, promotion }));
-        attempts.push(() => game.move({ from, to, promotion: promotion.toUpperCase() }));
-        attempts.push(() => game.move(from + to + (match[3] ? promotion : '')));
-        attempts.push(() => game.move(from + to));
-        attempts.push(() => game.move(from, to, promotion));
+    const addMoveAttempts = (obj) => {
+      if (!obj) return;
+      if (typeof obj.move === 'function') {
+        attempts.push(() => obj.move({ from, to, promotion }));
+        attempts.push(() => obj.move({ from, to, promotion: promotion.toUpperCase() }));
+        attempts.push(() => obj.move({ from, to }));
+        attempts.push(() => obj.move(from + to + (match[3] ? promotion : '')));
+        attempts.push(() => obj.move(from + to));
+        attempts.push(() => obj.move(from, to, promotion));
       }
-      ['playMove', 'makeMove', 'submitMove'].forEach((name) => {
-        if (typeof game[name] === 'function') attempts.push(() => game[name]({ from, to, promotion }));
+      ['playMove', 'makeMove', 'submitMove', 'movePiece', 'doMove'].forEach((name) => {
+        if (typeof obj[name] === 'function') {
+          attempts.push(() => obj[name]({ from, to, promotion }));
+          attempts.push(() => obj[name](from + to + (match[3] ? promotion : '')));
+          attempts.push(() => obj[name](from, to, promotion));
+        }
       });
-      ['chess', 'chessgame', 'engine'].forEach((key) => {
-        try {
-          const inner = game[key];
-          if (inner && typeof inner.move === 'function') {
-            attempts.push(() => inner.move({ from, to, promotion }));
-          }
-        } catch (e) {}
-      });
-    }
-    if (board && board.game && typeof board.game.move === 'function' && board.game !== game) {
-      attempts.push(() => board.game.move({ from, to, promotion }));
-    }
+    };
+
+    addMoveAttempts(game);
+    if (board && board.game && board.game !== game) addMoveAttempts(board.game);
     try {
       if (window.chessboard && typeof window.chessboard.getRelationship === 'function') {
         const g = window.chessboard.getRelationship().game;
-        if (g && typeof g.move === 'function' && g !== game) attempts.push(() => g.move({ from, to, promotion }));
+        if (g && g !== game) addMoveAttempts(g);
       }
     } catch (e) {}
+    if (game) {
+      ['chess', 'chessgame', 'engine', 'state', 'api'].forEach((key) => {
+        try { addMoveAttempts(game[key]); } catch (e) {}
+      });
+    }
 
+    let sawUndefined = false;
     for (const fn of attempts) {
       try {
         const result = fn();
-        if (result !== null && result !== false) return { ok: true, method: 'api' };
+        if (result === true || (result && typeof result === 'object')) return true;
+        if (result === undefined) sawUndefined = true;
+        // null/false -> failed, continue
       } catch (e) { /* try next */ }
     }
 
-    if (tryClickMove(match[0], promotion)) return { ok: true, method: 'click' };
+    if (sawUndefined) {
+      await sleep(180);
+      try {
+        const fenAfter = readFen(findGame());
+        if (fenBefore && fenAfter && fenAfter !== fenBefore) return true;
+      } catch (e) {}
+    }
+    return false;
+  }
+
+  async function tryPlayMove(uci) {
+    const match = /^([a-h][1-8])([a-h][1-8])([qrbn])?$/.exec(String(uci || ''));
+    if (!match) return { ok: false, reason: 'bad-move' };
+    const promotion = (match[3] || 'q').toLowerCase();
+    const fenBefore = (() => { try { return readFen(findGame()); } catch (e) { return null; } })();
+
+    if (await tryApiMove(match[0], fenBefore)) {
+      return { ok: true, method: 'api' };
+    }
+
+    const clicked = await tryClickMove(match[0], promotion);
+    if (clicked) return { ok: true, method: 'click' };
     return { ok: false, reason: 'no-move-method' };
   }
 
@@ -210,25 +265,30 @@
     if (event.data.type === 'playMove') {
       const move = typeof event.data.move === 'string' ? event.data.move : '';
       const requestId = event.data.requestId;
-      let result = { ok: false, reason: 'unhandled' };
-      try {
-        result = tryPlayMove(move);
-      } catch (e) {
-        result = { ok: false, reason: String(e) };
-      }
-      window.postMessage({
-        source: 'opental-bridge',
-        type: 'movePlayed',
-        requestId,
-        move,
-        ok: !!result.ok,
-        method: result.method || null,
-        reason: result.reason || null
-      }, '*');
-      if (result.ok) {
-        setTimeout(() => emit(true), 60);
-        setTimeout(() => emit(true), 250);
-      }
+      (async () => {
+        let result = { ok: false, reason: 'unhandled' };
+        try {
+          result = await tryPlayMove(move);
+          console.log('[OpenTal bridge] playMove', move, result);
+        } catch (e) {
+          result = { ok: false, reason: String(e) };
+          console.log('[OpenTal bridge] playMove error', move, e);
+        }
+        window.postMessage({
+          source: 'opental-bridge',
+          type: 'movePlayed',
+          requestId,
+          move,
+          ok: !!result.ok,
+          method: result.method || null,
+          reason: result.reason || null
+        }, '*');
+        if (result.ok) {
+          setTimeout(() => emit(true), 80);
+          setTimeout(() => emit(true), 300);
+          setTimeout(() => emit(true), 700);
+        }
+      })();
     }
   });
 

@@ -22,7 +22,7 @@
     <style>
       :host { all: initial; }
       .wrap { position: absolute; inset: 0; font-family: "Inter", "Segoe UI", system-ui, sans-serif; }
-      svg.board { display: block; width: 100%; height: 100%; overflow: visible; }
+      svg.board { display: block; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
       .pv-arrow { stroke-linecap: round; filter: drop-shadow(0 0 0.08px rgba(0,0,0,0.6)); }
       .pv1 { stroke: #60a5fa; stroke-width: 0.14; opacity: 0.95; }
       .pv2 { stroke: #ffd166; stroke-width: 0.11; opacity: 0.78; }
@@ -319,6 +319,7 @@
   let autoplayInFlight = false;
   let lastAutoPlayedKey = null;
   let playRequestSeq = 0;
+  let autoplayRetries = 0;
 
   function ensureHost() {
     if (host && host.isConnected) return;
@@ -420,7 +421,13 @@
       if (response && response.settings) settings = response.settings;
       syncForm();
       setStatus('Saved. Re-analysing…');
-      requestAnalysis(window.OpenTalBoard.current());
+      const state = window.OpenTalBoard && window.OpenTalBoard.current ? window.OpenTalBoard.current() : null;
+      requestAnalysis(state);
+      if (settings.autoplay && lastAnalysis) {
+        setTimeout(() => { if (lastAnalysis) tryScheduleAutoplay(lastAnalysis); }, 0);
+      } else if (!settings.autoplay) {
+        cancelAutoplay('disabled');
+      }
     } catch (error) {
       if (version !== saveVersion) return;
       setStatus('Could not save settings.');
@@ -584,48 +591,66 @@
   function tryScheduleAutoplay(result) {
     if (!result || !settings.autoplay) return;
     if (autoplayInFlight) return;
-    if (result.revision != null && result.revision !== revision) return;
+    const resRevision = result.revision != null ? result.revision : revision;
+    if (resRevision !== revision) return;
     const best = result.bestmove != null ? String(result.bestmove) : '';
     if (!/^([a-h][1-8])([a-h][1-8])([qrbn])?$/.test(best)) return;
     if (!lastFen || !shouldAutoplayForTurn(lastTurn)) return;
-    const key = lastFen + '|' + best;
+    const key = resRevision + '|' + lastFen + '|' + best;
     if (key === lastAutoPlayedKey) return;
 
     cancelAutoplay();
     const delay = Math.max(0, Number(settings.autoplayDelay) || 0);
     autoplayTimer = setTimeout(() => {
       autoplayTimer = null;
-      if (!settings.autoplay) return;
-      if (result.revision != null && result.revision !== revision) return;
-      if (!lastFen || !shouldAutoplayForTurn(lastTurn)) return;
-      if (autoplayInFlight) return;
-      const curKey = lastFen + '|' + best;
+      if (!settings.autoplay || autoplayInFlight) return;
+      if (revision !== resRevision || !lastFen || !shouldAutoplayForTurn(lastTurn)) return;
+      const curKey = revision + '|' + lastFen + '|' + best;
       if (curKey === lastAutoPlayedKey) return;
       autoplayInFlight = true;
       lastAutoPlayedKey = curKey;
       const requestId = ++playRequestSeq;
+      const fenAtSend = lastFen;
+      const revAtSend = revision;
       setStatus('Auto-playing ' + best + '…');
-      window.postMessage({ source: 'opental-content', type: 'playMove', move: best, requestId }, '*');
+      window.postMessage({ source: 'opental-content', type: 'playMove', move: best, requestId, fen: fenAtSend }, '*');
 
-      // Fallback: if page bridge doesn't answer, release lock after a bit.
+      // If no position change is observed, treat as failure and allow limited retries.
       setTimeout(() => {
-        if (autoplayInFlight) {
+        if (!autoplayInFlight) return;
+        if (revision === revAtSend && lastFen === fenAtSend) {
           autoplayInFlight = false;
+          if (lastAutoPlayedKey === curKey) lastAutoPlayedKey = null;
+          autoplayRetries += 1;
+          if (autoplayRetries <= 3) {
+            setStatus('Auto-play: no board change (retry ' + autoplayRetries + '/3)…');
+            if (lastAnalysis) tryScheduleAutoplay(lastAnalysis);
+          } else {
+            setStatus('Auto-play: move not applied. Check side/turn or play manually.');
+            console.log('[OpenTal] autoplay gave up after retries', { fen: fenAtSend, best, rev: revAtSend });
+          }
+        } else {
+          autoplayRetries = 0;
         }
-      }, 1500);
+      }, 2200);
     }, delay);
   }
 
   window.addEventListener('message', (event) => {
     if (event.source !== window || !event.data || event.data.source !== 'opental-bridge') return;
     if (event.data.type === 'movePlayed') {
-      autoplayInFlight = false;
-      if (event.data.ok) {
-        setStatus('Auto-played ' + (event.data.move || '') + '.');
+      window.OpenTalDebug = window.OpenTalDebug || {};
+      window.OpenTalDebug.lastMovePlayed = event.data;
+      console.log('[OpenTal] movePlayed', event.data);
+      if (!event.data.ok) {
+        autoplayInFlight = false;
+        autoplayRetries += 1;
+        setStatus('Auto-play failed: ' + (event.data.reason || 'unknown') + (autoplayRetries <= 3 ? ' (retrying)…' : ''));
+        lastAutoPlayedKey = null;
+        if (autoplayRetries <= 3 && lastAnalysis) tryScheduleAutoplay(lastAnalysis);
       } else {
-        setStatus('Auto-play failed: ' + (event.data.reason || 'unknown'));
-        // allow retry on same position if it didn't actually move
-        if (lastFen) lastAutoPlayedKey = null;
+        setStatus('Auto-play sent (' + (event.data.method || 'move') + ') ' + (event.data.move || '') + '…');
+        // keep in-flight until board position changes or watchdog times out
       }
     }
   });
@@ -719,6 +744,7 @@
     cancelAutoplay('new-position');
     autoplayInFlight = false;
     lastAutoPlayedKey = null;
+    autoplayRetries = 0;
     clear();
     ensureHost();
     window.OpenTalDebug = window.OpenTalDebug || {};
