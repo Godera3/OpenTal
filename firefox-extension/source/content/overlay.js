@@ -163,6 +163,128 @@
       </div>
     </div>`;
 
+  const OPENINGS = {
+    '': 'Starting Position',
+    'e2e4': "King's Pawn",
+    'd2d4': "Queen's Pawn",
+    'c2c4': 'English Opening',
+    'g1f3': 'Réti Opening',
+    'b2b3': 'Nimzowitsch-Larsen Attack',
+    'f2f4': "Bird's Opening",
+    'g2g3': "King's Fianchetto",
+    'e2e4 e7e5': 'Open Game',
+    'e2e4 c7c5': 'Sicilian Defense',
+    'e2e4 e7e6': 'French Defense',
+    'e2e4 c7c6': 'Caro-Kann Defense',
+    'e2e4 d7d5': 'Scandinavian Defense',
+    'e2e4 g8f6': 'Alekhine Defense',
+    'e2e4 d7d6': 'Pirc Defense',
+    'e2e4 g7g6': 'Modern Defense',
+    'e2e4 b8c6': 'Nimzowitsch Defense',
+    'd2d4 d7d5': 'Closed Game',
+    'd2d4 g8f6': 'Indian Defense',
+    'd2d4 f7f5': 'Dutch Defense',
+    'd2d4 e7e6': "Queen's Pawn Game",
+    'd2d4 d7d6': 'Rat Defense',
+    'd2d4 g7g6': 'Modern Defense',
+    'c2c4 e7e5': 'English: Reversed Sicilian',
+    'c2c4 c7c5': 'English: Symmetrical',
+    'c2c4 g8f6': 'English: Indian',
+    'g1f3 d7d5': 'Réti Opening',
+    'g1f3 g8f6': 'Réti Opening',
+    'e2e4 e7e5 g1f3': "King's Knight Opening",
+    'e2e4 e7e5 g1f3 b8c6': 'Open Game',
+    'e2e4 e7e5 g1f3 b8c6 f1b5': 'Ruy Lopez',
+    'e2e4 e7e5 g1f3 b8c6 f1b5 a7a6': 'Ruy Lopez: Morphy Defense',
+    'e2e4 e7e5 g1f3 b8c6 f1b5 g8f6': 'Ruy Lopez: Berlin Defense',
+    'e2e4 e7e5 g1f3 b8c6 f1b5 f8c5': 'Ruy Lopez: Classical Defense',
+    'e2e4 e7e5 g1f3 b8c6 f1c4': 'Italian Game',
+    'e2e4 e7e5 g1f3 b8c6 f1c4 f8c5': 'Giuoco Piano',
+    'e2e4 e7e5 g1f3 b8c6 f1c4 f8c5 b2b4': 'Evans Gambit',
+    'e2e4 e7e5 g1f3 b8c6 f1c4 g8f6': 'Two Knights Defense',
+    'e2e4 e7e5 g1f3 b8c6 f1c4 g8f6 g1g5': 'Two Knights: Fried Liver Attack',
+    'e2e4 e7e5 g1f3 b8c6 d2d4': 'Scotch Game',
+    'e2e4 e7e5 g1f3 b8c6 d2d4 e5d4 f3d4': 'Scotch Game',
+    'e2e4 e7e5 g1f3 b8c6 b1c3': 'Four Knights Game',
+    'e2e4 e7e5 g1f3 b8c6 b1c3 g8f6': 'Four Knights Game',
+    'e2e4 e7e5 g1f3 g8f6': 'Petrov Defense',
+    'e2e4 e7e5 g1f3 g8f6 f3e5': 'Petrov: Classical',
+    'e2e4 e7e5 g1f3 d7d6': 'Philidor Defense',
+    'e2e4 e7e5 f2f4': "King's Gambit",
+    'e2e4 e7e5 f2f4 e5f4': "King's Gambit Accepted",
+    'e2e4 e7e5 b1c3': 'Vienna Game',
+    'e2e4 e7e5 b1c3 g8f6': 'Vienna Game',
+    'e2e4 e7e5 d2d4': 'Center Game',
+    'e2e4 c7c5 g1f3': 'Sicilian Defense',
+    'e2e4 c7c5 g1f3 d7d6': 'Sicilian Defense',
+    'e2e4 c7c5 g1f3 b8c6': 'Sicilian Defense',
+    'e2e4 c7c5 g1f3 e7e6': 'Sicilian: Kan/Taimanov',
+    'e2e4 c7c5 g1f3 g7g6': 'Sicilian: Hyperaccelerated Dragon',
+    'e2e4 c7c5 g1f3 d7d6 d2d4 c5d4 f3d4': 'Sicilian: Open',
+    'e2e4 c7c5 g1f3 d7d6 d2d4 c5d4 f3d4 g8f6 b1c3': 'Sicilian: Open',
+    'e2e4 c7c5 g1f3 d7d6 d2d4 c5d4 f3d4 g8f6 b1c3 a7a6': 'Sicilian Najdorf',
+    'e2e4 c7c5 g1f3 d7d6 d2d4 c5d4 f3d4 g8f6 b1c3 g7g6': 'Sicilian Dragon',
+    'e2e4 c7c5 g1f3 d7d6 d2d4 c5d4 f3d4 g8f6 b1c3 e7e6': 'Sicilian Scheveningen',
+    'e2e4 c7c5 g1f3 d7d6 d2d4 c5d4 f3d4 g8f6 b1c3 b8c6': 'Sicilian Classical',
+    'e2e4 c7c5 g1f3 b8c6 d2d4 c5d4 f3d4': 'Sicilian: Open',
+    'e2e4 c7c5 g1f3 b8c6 d2d4 c5d4 f3d4 g7g6': 'Sicilian Accelerated Dragon',
+    'e2e4 c7c5 g1f3 e7e6 d2d4 c5d4 f3d4': 'Sicilian: Kan/Taimanov',
+    'e2e4 c7c5 g1f3 e7e6 d2d4 c5d4 f3d4 a7a6': 'Sicilian Kan',
+    'e2e4 c7c5 g1f3 e7e6 d2d4 c5d4 f3d4 b8c6': 'Sicilian Taimanov',
+    'e2e4 c7c5 b1c3': 'Sicilian: Closed',
+    'e2e4 c7c5 c2c3': 'Sicilian: Alapin',
+    'e2e4 c7c5 d2d4': 'Sicilian: Smith-Morra Gambit',
+    'e2e4 e7e6 d2d4 d7d5': 'French Defense',
+    'e2e4 e7e6 d2d4 d7d5 b1c3': 'French Defense',
+    'e2e4 e7e6 d2d4 d7d5 b1c3 g8f6': 'French: Classical',
+    'e2e4 e7e6 d2d4 d7d5 b1c3 f8b4': 'French: Winawer',
+    'e2e4 e7e6 d2d4 d7d5 b1d2': 'French: Tarrasch',
+    'e2e4 e7e6 d2d4 d7d5 e4e5': 'French: Advance',
+    'e2e4 e7e6 d2d4 d7d5 e4d5': 'French: Exchange',
+    'e2e4 c7c6 d2d4 d7d5': 'Caro-Kann Defense',
+    'e2e4 c7c6 d2d4 d7d5 b1c3': 'Caro-Kann: Classical',
+    'e2e4 c7c6 d2d4 d7d5 b1c3 d5e4 b3e4': 'Caro-Kann: Classical',
+    'e2e4 c7c6 d2d4 d7d5 e4e5': 'Caro-Kann: Advance',
+    'e2e4 c7c6 d2d4 d7d5 e4d5': 'Caro-Kann: Exchange',
+    'e2e4 d7d5 e4d5': 'Scandinavian Defense',
+    'e2e4 d7d5 e4d5 d8d5': 'Scandinavian: Main Line',
+    'e2e4 d7d5 e4d5 g8f6': 'Scandinavian: Modern',
+    'd2d4 d7d5 c2c4': "Queen's Gambit",
+    'd2d4 d7d5 c2c4 e7e6': "Queen's Gambit Declined",
+    'd2d4 d7d5 c2c4 e7e6 b1c3': "Queen's Gambit Declined",
+    'd2d4 d7d5 c2c4 e7e6 b1c3 g8f6': "Queen's Gambit Declined",
+    'd2d4 d7d5 c2c4 c7c6': 'Slav Defense',
+    'd2d4 d7d5 c2c4 c7c6 g1f3 g8f6 b1c3': 'Slav Defense',
+    'd2d4 d7d5 c2c4 c7c6 g1f3 g8f6 b1c3 d5c4': 'Slav: Accepted',
+    'd2d4 d7d5 c2c4 d5c4': "Queen's Gambit Accepted",
+    'd2d4 d7d5 c2c4 e7e5': 'Albin Countergambit',
+    'd2d4 g8f6 c2c4 e7e6': 'Indian Defense',
+    'd2d4 g8f6 c2c4 e7e6 b1c3 f8b4': 'Nimzo-Indian Defense',
+    'd2d4 g8f6 c2c4 e7e6 g1f3 b7b6': "Queen's Indian Defense",
+    'd2d4 g8f6 c2c4 e7e6 g2g3': 'Catalan Opening',
+    'd2d4 g8f6 c2c4 e7e6 g2g3 d7d5': 'Catalan Opening',
+    'd2d4 g8f6 c2c4 g7g6': "King's Indian / Grünfeld",
+    'd2d4 g8f6 c2c4 g7g6 b1c3 f8g7': "King's Indian Defense",
+    'd2d4 g8f6 c2c4 g7g6 b1c3 f8g7 e2e4 d7d6': "King's Indian Defense",
+    'd2d4 g8f6 c2c4 g7g6 b1c3 f8g7 e2e4 d7d6 g1f3 e8g8': "King's Indian: Classical",
+    'd2d4 g8f6 c2c4 g7g6 b1c3 d7d5': 'Grünfeld Defense',
+    'd2d4 g8f6 c2c4 g7g6 b1c3 d7d5 c4d5 g8d5': 'Grünfeld: Exchange',
+    'd2d4 g8f6 c2c4 e7e6 g1f3 f8b4': 'Bogo-Indian Defense',
+    'd2d4 g8f6 c2c4 c7c5 d4d5': 'Benoni Defense',
+    'd2d4 g8f6 c2c4 c7c5 d4d5 e7e6': 'Modern Benoni',
+    'd2d4 f7f5 c2c4': 'Dutch Defense',
+    'd2d4 f7f5 c2c4 g8f6': 'Dutch Defense',
+    'd2d4 f7f5 g2g3': 'Dutch: Leningrad setup',
+    'd2d4 d7d5 g1f3 g8f6 c2c4': "Queen's Gambit",
+    'g1f3 d7d5 c2c4': 'Réti: Queen\'s Gambit',
+    'c2c4 e7e5 b1c3': 'English Opening',
+    'c2c4 e7e5 b1c3 g8f6': 'English: Four Knights',
+    'e2e4 e7e5 g1f3 b8c6 f1b5 a7a6 b5a4 g8f6 e1g1 f8e7 f1e1 b7b5 a4b3 d7d6 c2c3 e8g8 h2h3': 'Ruy Lopez: Closed',
+    'e2e4 c7c5 g1f3 d7d6 d2d4 c5d4 f3d4 g8f6 b1c3 a7a6 c1g5': 'Sicilian Najdorf: Main Line',
+    'e2e4 c7c5 g1f3 d7d6 d2d4 c5d4 f3d4 g8f6 b1c3 a7a6 f1e2': 'Sicilian Najdorf: Opocensky',
+    'd2d4 g8f6 c2c4 e7e6 b1c3 f8b4 e2e3': 'Nimzo-Indian: Rubinstein'
+  };
+
   let host = null;
   let shadow = null;
   let flipped = false;
@@ -172,6 +294,7 @@
   let saveTimer = null;
   let saveVersion = 0;
   let outsideBound = false;
+  let lastMoves = [];
 
   function ensureHost() {
     if (host && host.isConnected) return;
@@ -354,6 +477,20 @@
     return 'book';
   }
 
+  function openingName(moves, bestMove) {
+    const base = Array.isArray(moves) ? moves.filter(Boolean) : [];
+    const seqs = [];
+    if (bestMove && /^[a-h][1-8][a-h][1-8][qrbn]?$/.test(bestMove)) seqs.push(base.concat([bestMove]));
+    seqs.push(base);
+    for (const seq of seqs) {
+      for (let len = seq.length; len >= 0; len--) {
+        const key = seq.slice(0, len).join(' ');
+        if (Object.prototype.hasOwnProperty.call(OPENINGS, key)) return OPENINGS[key];
+      }
+    }
+    return null;
+  }
+
   function clear() {
     if (!shadow) return;
     const arrows = $('arrows');
@@ -409,7 +546,13 @@
     }
 
     const top = candidates[0];
-    $('badge').textContent = 'TAL ' + top.move + ' · ' + formatScore(top);
+    const isBook = top.score == null && top.mate == null;
+    let label = formatScore(top);
+    if (isBook) {
+      const opening = openingName(lastMoves, top.move);
+      label = opening ? ('book · ' + opening) : 'book';
+    }
+    $('badge').textContent = 'TAL ' + top.move + ' · ' + label;
 
     if (candidates.length > 1) {
       candidates.forEach((line, index) => {
@@ -432,6 +575,7 @@
     browser.runtime.sendMessage({
       type: 'analyse',
       fen: state.fen,
+      moves: Array.isArray(state.moves) ? state.moves : [],
       revision: state.revision,
       movetime: settings.movetime
     }).catch((error) => {
@@ -456,14 +600,22 @@
   window.OpenTalBoard.start((state) => {
     revision = state.revision;
     flipped = !!state.flipped;
+    lastMoves = Array.isArray(state.moves) ? state.moves.slice() : [];
     clear();
     ensureHost();
     window.OpenTalDebug = window.OpenTalDebug || {};
     window.OpenTalDebug.lastSentFen = state.fen;
+    window.OpenTalDebug.lastMoves = lastMoves.slice();
     window.OpenTalDebug.lastState = state;
-    console.log('[OpenTal] analyse', state.source, state.turn, state.flipped, state.fen);
+    console.log('[OpenTal] analyse', state.source, state.turn, state.flipped, state.fen, lastMoves.length);
     place();
     requestAnalysis(state);
+    browser.runtime.sendMessage({
+      type: 'gameState',
+      fen: state.fen,
+      moves: lastMoves,
+      url: window.location.href
+    }).catch(() => {});
   });
 
   window.addEventListener('resize', schedulePlace);

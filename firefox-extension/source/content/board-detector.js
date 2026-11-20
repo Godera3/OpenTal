@@ -11,6 +11,8 @@
 
   const PIECE_SELECTOR = 'piece[class*="square-"], [class*="piece"][class*="square-"]';
   const PIECE_CODES = { king: 'k', queen: 'q', rook: 'r', bishop: 'b', knight: 'n', pawn: 'p' };
+  const START_PLACEMENT = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR';
+  const FILES = 'abcdefgh';
 
   let board = null;
   let lastFen = null;
@@ -19,6 +21,7 @@
   let dragging = false;
   let domObserver = null;
   let observedRoot = null;
+  let moveHistory = [];
   const listeners = [];
 
   window.addEventListener('message', (event) => {
@@ -157,6 +160,113 @@
     return !!document.querySelector('.cg-wrap.orientation-black, .orientation-black, .board-layout-chessboard.flipped');
   }
 
+  function placementOf(fen) {
+    return typeof fen === 'string' ? fen.split(' ')[0] : '';
+  }
+
+  function parseBoard(placement) {
+    const rows = String(placement || '').split('/');
+    if (rows.length !== 8) return null;
+    const out = new Array(64).fill('');
+    for (let r = 0; r < 8; r++) {
+      const rank = 7 - r;
+      let file = 0;
+      for (const ch of rows[r]) {
+        if (ch >= '1' && ch <= '8') {
+          file += Number(ch);
+        } else {
+          if (file > 7 || rank < 0 || rank > 7) return null;
+          out[rank * 8 + file] = ch;
+          file++;
+        }
+      }
+      if (file !== 8) return null;
+    }
+    return out;
+  }
+
+  function squareName(index) {
+    return FILES[index % 8] + String(Math.floor(index / 8) + 1);
+  }
+
+  function isWhitePiece(piece) { return piece >= 'A' && piece <= 'Z'; }
+  function isBlackPiece(piece) { return piece >= 'a' && piece <= 'z'; }
+
+  function deriveUciMove(prevFen, nextFen) {
+    const prevPlacement = placementOf(prevFen);
+    const nextPlacement = placementOf(nextFen);
+    if (!prevPlacement || !nextPlacement || prevPlacement === nextPlacement) return null;
+    const prev = parseBoard(prevPlacement);
+    const next = parseBoard(nextPlacement);
+    if (!prev || !next) return null;
+    const prevParts = String(prevFen).split(' ');
+    const active = prevParts[1] === 'b' ? 'b' : 'w';
+    const mine = active === 'w' ? isWhitePiece : isBlackPiece;
+
+    const diffs = [];
+    for (let i = 0; i < 64; i++) {
+      if (prev[i] !== next[i]) diffs.push(i);
+    }
+    if (diffs.length === 4) {
+      const movedKings = diffs.filter((i) => prev[i].toLowerCase() === 'k' || next[i].toLowerCase() === 'k');
+      if (movedKings.length >= 2) {
+        if (active === 'w') {
+          if (prev[4] === 'K' && next[6] === 'K') return 'e1g1';
+          if (prev[4] === 'K' && next[2] === 'K') return 'e1c1';
+        } else {
+          if (prev[60] === 'k' && next[62] === 'k') return 'e8g8';
+          if (prev[60] === 'k' && next[58] === 'k') return 'e8c8';
+        }
+      }
+      return null;
+    }
+
+    if (diffs.length === 3) {
+      const from = diffs.find((i) => mine(prev[i]) && !next[i]);
+      const to = diffs.find((i) => !prev[i] && mine(next[i]));
+      if (from == null || to == null) return null;
+      if (prev[from].toLowerCase() !== 'p') return null;
+      return squareName(from) + squareName(to);
+    }
+
+    if (diffs.length === 2) {
+      let from = diffs.find((i) => mine(prev[i]) && !next[i]);
+      let to = diffs.find((i) => mine(next[i]) && i !== from);
+      if (from == null || to == null) {
+        from = diffs.find((i) => mine(prev[i]));
+        to = diffs.find((i) => i !== from);
+      }
+      if (from == null || to == null) return null;
+      let promo = '';
+      if (prev[from].toLowerCase() === 'p' && next[to].toLowerCase() !== 'p') {
+        promo = next[to].toLowerCase();
+      }
+      return squareName(from) + squareName(to) + promo;
+    }
+
+    return null;
+  }
+
+  function updateMoveHistory(prevFen, nextFen) {
+    const nextPlacement = placementOf(nextFen);
+    if (!nextPlacement) return;
+    if (nextPlacement === START_PLACEMENT) {
+      moveHistory = [];
+      return;
+    }
+    if (!prevFen) {
+      moveHistory = [];
+      return;
+    }
+    const move = deriveUciMove(prevFen, nextFen);
+    if (move) {
+      moveHistory = moveHistory.concat([move]);
+    } else if (placementOf(prevFen) !== nextPlacement) {
+      // Position changed but we can't reliably map it to a single move.
+      moveHistory = [];
+    }
+  }
+
   function current() {
     if (!board || !board.isConnected) findBoard();
     const fen = fromBridge() || fromSiteApi() || fromDom();
@@ -165,16 +275,26 @@
       ? bridgeState.flipped
       : domFlipped();
     const turn = bridgeState && bridgeState.turn ? bridgeState.turn : (fen.split(' ')[1] || null);
-    return { fen, flipped, board, revision, turn, source: fromBridge() ? 'bridge' : (fromSiteApi() ? 'api' : 'dom') };
+    return { fen, flipped, board, revision, turn, moves: moveHistory.slice(), source: fromBridge() ? 'bridge' : (fromSiteApi() ? 'api' : 'dom') };
   }
 
   function tick(force) {
     if (dragging && !force) return;
-    const state = current();
-    if (!state || state.fen === lastFen) return;
-    lastFen = state.fen;
+    const stateWithoutMoves = (() => {
+      if (!board || !board.isConnected) findBoard();
+      const fen = fromBridge() || fromSiteApi() || fromDom();
+      if (!fen) return null;
+      const flipped = bridgeState && typeof bridgeState.flipped === 'boolean'
+        ? bridgeState.flipped
+        : domFlipped();
+      const turn = bridgeState && bridgeState.turn ? bridgeState.turn : (fen.split(' ')[1] || null);
+      return { fen, flipped, board, revision, turn, source: fromBridge() ? 'bridge' : (fromSiteApi() ? 'api' : 'dom') };
+    })();
+    if (!stateWithoutMoves || stateWithoutMoves.fen === lastFen) return;
+    updateMoveHistory(lastFen, stateWithoutMoves.fen);
+    lastFen = stateWithoutMoves.fen;
     revision++;
-    state.revision = revision;
+    const state = Object.assign({}, stateWithoutMoves, { revision, moves: moveHistory.slice() });
     window.OpenTalDebug.lastState = state;
     listeners.forEach((listener) => listener(state));
   }
