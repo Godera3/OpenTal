@@ -315,7 +315,8 @@
       display: 'block', pointerEvents: 'none', zIndex: '2147483647', overflow: 'visible'
     });
     shadow = host.attachShadow({ mode: 'open' });
-    shadow.innerHTML = MARKUP;
+    const doc = new DOMParser().parseFromString(MARKUP, 'text/html');
+    shadow.append(...Array.from(doc.head.childNodes), ...Array.from(doc.body.childNodes));
     (document.body || document.documentElement).appendChild(host);
     bindControls();
     loadSettings();
@@ -555,8 +556,8 @@
     if (!shadow) return;
     const arrows = $('arrows');
     const lines = $('lines');
-    if (arrows) arrows.innerHTML = '';
-    if (lines) { lines.innerHTML = ''; lines.classList.add('hidden'); }
+    if (arrows) arrows.replaceChildren();
+    if (lines) { lines.replaceChildren(); lines.classList.add('hidden'); }
   }
 
   function drawArrow(svgGroup, move, rank) {
