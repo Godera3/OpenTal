@@ -132,65 +132,7 @@ function connect() {
   });
 }
 
-const GAMES_KEY = 'opentalGames';
-const MAX_GAMES = 50;
-const activeGames = new Map(); // tabId -> { id, movesCount, url }
 
-async function recordGameState(tabId, state) {
-  if (!tabId || !state || !Array.isArray(state.moves)) return;
-  const moves = state.moves.filter((m) => typeof m === 'string');
-  const url = typeof state.url === 'string' ? state.url : '';
-  const fen = typeof state.fen === 'string' ? state.fen : '';
-  const now = Date.now();
-
-  let active = activeGames.get(tabId);
-  const isStart = moves.length === 0 && /^rnbqkbnr\/pppppppp\/8\/8\/8\/8\/PPPPPPPP\/RNBQKBNR\b/.test(fen);
-
-  if (!active) {
-    if (moves.length === 0) return;
-    active = { id: String(now) + '-' + String(tabId), movesCount: 0, url };
-    activeGames.set(tabId, active);
-  } else if (moves.length === 0 && isStart && active.movesCount > 0) {
-    // new game on same tab/page
-    active = { id: String(now) + '-' + String(tabId), movesCount: 0, url };
-    activeGames.set(tabId, active);
-  } else if (moves.length < active.movesCount) {
-    // navigated back or branch reset; start a fresh record
-    active = { id: String(now) + '-' + String(tabId), movesCount: 0, url };
-    activeGames.set(tabId, active);
-  }
-
-  if (moves.length === 0) return;
-
-  active.movesCount = moves.length;
-  active.url = url || active.url;
-
-  let stored = { [GAMES_KEY]: [] };
-  try {
-    stored = await browser.storage.local.get(GAMES_KEY);
-  } catch (error) { /* ignore */ }
-  const games = Array.isArray(stored[GAMES_KEY]) ? stored[GAMES_KEY].slice() : [];
-  const idx = games.findIndex((g) => g && g.id === active.id);
-  const record = {
-    id: active.id,
-    url: active.url || url,
-    moves: moves.slice(),
-    lastFen: fen,
-    updatedAt: now,
-    startedAt: idx >= 0 && games[idx] && games[idx].startedAt ? games[idx].startedAt : now
-  };
-  if (idx >= 0) games[idx] = Object.assign({}, games[idx], record);
-  else games.push(record);
-
-  // keep most recently updated games
-  games.sort((a, b) => (b && b.updatedAt || 0) - (a && a.updatedAt || 0));
-  const trimmed = games.slice(0, MAX_GAMES);
-  try {
-    await browser.storage.local.set({ [GAMES_KEY]: trimmed });
-  } catch (error) {
-    report('game store failed: ' + error);
-  }
-}
 
 browser.runtime.onMessage.addListener((msg, sender) => {
   if (msg.type === 'analyse') {
@@ -221,18 +163,7 @@ browser.runtime.onMessage.addListener((msg, sender) => {
       return { ok: true, settings, ready, engine: engineName };
     });
   }
-  if (msg.type === 'gameState') {
-    const tabId = sender && sender.tab ? sender.tab.id : null;
-    return recordGameState(tabId, msg).then(() => ({ ok: true })).catch(() => ({ ok: false }));
-  }
-  if (msg.type === 'getGames') {
-    return browser.storage.local.get(GAMES_KEY).then((stored) => ({
-      games: Array.isArray(stored[GAMES_KEY]) ? stored[GAMES_KEY] : []
-    })).catch(() => ({ games: [] }));
-  }
   return Promise.resolve({ ok: false });
 });
-
-browser.tabs.onRemoved.addListener((tabId) => { activeGames.delete(tabId); });
 
 loadSettings().then(connect);

@@ -724,12 +724,6 @@
     console.log('[OpenTal] state', state.source, 'turn', lastTurn, 'player', lastPlayer, 'flipped', state.flipped, state.fen, 'moves', lastMoves.length);
     place();
     requestAnalysis(state);
-    browser.runtime.sendMessage({
-      type: 'gameState',
-      fen: state.fen,
-      moves: lastMoves,
-      url: window.location.href
-    }).catch(() => {});
   });
 
   window.addEventListener('resize', schedulePlace);
