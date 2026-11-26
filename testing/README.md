@@ -1,8 +1,8 @@
 # Tal-style match harness
 
 `TalStyleMatchRunner.py` plays UCI matches and measures **style**, not strength.
-It uses the engines installed in Arena, driven directly through UCI — no GUI
-needed — and starts games from positions taken from Tal's own games, so the
+It drives UCI engines directly through `CHESS_ENGINES_DIR` — no GUI needed —
+and starts games from positions taken from Tal's own games, so the
 question being asked is "would Tal play like this here?", not "who won?".
 
 ## Why results are not the scoreboard
@@ -40,12 +40,15 @@ Options:
 - `--opponent` — stockfish, arasan, toga, senpai, spike, arminius, gaviota,
   aice, alfil, k2, v1
 - `--games` — games per colour (2 means 4 games total)
-- `--depth` — fixed search depth in plies; 5 matches the current Arena setting
+- `--depth` — fixed search depth in plies; 5 matches the reference runs
 - `--plies` — which ply of the Tal games to start from (16 = move 9)
 - `--out` — where PGNs are written (default `/tmp/opencode/tal-matches`)
 
-Opponent binaries are read from `~/.arena_linux/Engines`; override with
-`ARENA_ENGINES_DIR`. The reference games are `testing/tal-reference-games.pgn`.
+Opponent binaries are read from `CHESS_ENGINES_DIR`; set it to a folder holding
+the `Stockfish/`, `Arasan/`, `TogaII/` and other engine subfolders. The specimen
+probe finds Stockfish through `STOCKFISH_BINARY` or PATH and skips the verdict
+when none is available. The reference games are
+`testing/tal-reference-games.pgn`.
 
 ## Result (Stockfish 10, depth 5, 12 games, three-attacker rule)
 

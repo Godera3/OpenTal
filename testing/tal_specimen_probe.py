@@ -10,6 +10,7 @@ the objective engine verdict on the key queen sacrifice so the tradeoff between
 """
 
 import os
+import shutil
 import subprocess
 import sys
 
@@ -85,8 +86,7 @@ class Stockfish:
     """Objective verdicts, so a lost sac is not mistaken for a missed style move."""
 
     def __init__(self, depth=14):
-        path = os.path.expanduser(
-            "~/.arena_linux/Engines/Stockfish/stockfish_10_x64_modern_official")
+        path = os.environ.get("STOCKFISH_BINARY") or shutil.which("stockfish") or ""
         self.depth = depth
         self.proc = None
         if os.path.exists(path):

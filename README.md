@@ -21,20 +21,15 @@ OpenTal is a UCI-compatible chess engine that plays in the style of Mikhail Tal,
 - **Pure Tal Style**: Sacrifices material for initiative, chaotic positions, relentless king attacks
 - **Tal Opening Book**: Uses `ph-tal2.bin` (Tal's actual games)
 - **Aggressive Evaluation**: Ignores material disadvantage when attacking
-- **UCI Compatible**: Works with Arena Chess GUI, Cute Chess, etc.
+- **UCI Compatible**: Works with UCI chess GUIs such as Cute Chess
 
-## Arena Chess GUI Setup
+## Engine Parameters
 
-1. **Download**: Get the `opental` executable (Linux) or compile it yourself
-2. **Open Arena Chess GUI**
-3. **Engine → Install New Engine**
-4. **Browse** to `opental` executable
-5. **Set Parameters** (optional):
-   - `TalMode`: true (default) - Pure Tal style (always ON)
-   - `TalRandom`: false (default) - Unpredictable, non-deterministic play
-   - `UseBook`: true (default) - Uses Tal's opening book
-   - `Threads`: 1-8 (default 1)
-   - `Hash`: 16-4096 MB (default 128)
+- `TalMode`: true (default) - Pure Tal style (always ON)
+- `TalRandom`: false (default) - Unpredictable, non-deterministic play
+- `UseBook`: true (default) - Uses Tal's opening book
+- `Threads`: 1-8 (default 1)
+- `Hash`: 16-4096 MB (default 128)
 
 ## Compilation (Linux)
 

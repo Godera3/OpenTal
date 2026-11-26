@@ -13,8 +13,8 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from TalStyleMatchRunner import (  # noqa: E402
-    ROOT, ARENA, OPPONENTS, UCIEngine, load_tal_positions, measure,
-    play_game, tal_baseline, write_pgn,
+    ROOT, OPPONENTS, UCIEngine, load_tal_positions, measure,
+    play_game, resolve_engine, tal_baseline, write_pgn,
 )
 
 V2 = "OpenTal 2.0 (new Tal)"
@@ -48,7 +48,7 @@ def main():
         sys.exit("not enough Tal positions at ply %d" % args.plies)
 
     opp_name, opp_path = OPPONENTS[args.opponent]
-    opp_full = opp_path if os.path.isabs(opp_path) else os.path.join(ARENA, opp_path)
+    opp_full = resolve_engine(opp_path)
     a_name = V1 if args.old_as_a else V2
     a_path = (os.path.join(ROOT, "opental-v1") if args.old_as_a
               else os.path.join(ROOT, "opental"))

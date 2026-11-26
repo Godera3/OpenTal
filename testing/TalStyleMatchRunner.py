@@ -28,10 +28,19 @@ except ImportError:
 import chess.pgn
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-ARENA = os.environ.get("ARENA_ENGINES_DIR",
-                       os.path.expanduser("~/.arena_linux/Engines"))
+ENGINES_DIR = os.environ.get("CHESS_ENGINES_DIR", "")
 
-# Engine paths are relative to the Arena engines folder.
+
+def resolve_engine(opp_path):
+    """Locate an opponent binary from CHESS_ENGINES_DIR."""
+    if os.path.isabs(opp_path):
+        return opp_path
+    if not ENGINES_DIR:
+        sys.exit("set CHESS_ENGINES_DIR to a folder of UCI engines to run match tests")
+    return os.path.join(ENGINES_DIR, opp_path)
+
+
+# Engine paths are relative to CHESS_ENGINES_DIR.
 OPPONENTS = {
     "stockfish": ("Stockfish 10", "Stockfish/stockfish_10_x64_modern_official"),
     "arasan": ("Arasan 21.4", "Arasan/arasanx-21.4-64-popcnt"),
@@ -339,7 +348,7 @@ def main():
         sys.exit("not enough Tal positions at ply %d" % args.plies)
 
     opp_name, opp_path = OPPONENTS[args.opponent]
-    opp_full = opp_path if os.path.isabs(opp_path) else os.path.join(ARENA, opp_path)
+    opp_full = resolve_engine(opp_path)
     tal = UCIEngine(os.path.join(ROOT, "opental"), ROOT,
                     {"UseBook": "false", "TalRandom": "false"})
     opp = UCIEngine(opp_full, os.path.dirname(opp_full))
